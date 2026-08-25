@@ -1,6 +1,8 @@
 import unittest
 
-from kleinanzeigen_search.locations import Location, LocationResolver, normalise_radius, plz_table
+from kleinanzeigen_search.locations import (
+    Location, LocationResolver, normalise_radius, plz_table, radius_at_least,
+)
 
 BERLIN = (52.52, 13.405)
 
@@ -51,6 +53,14 @@ class RadiusTest(unittest.TestCase):
 
     def test_never_zero(self):
         self.assertEqual(normalise_radius(0), 5)
+
+    def test_at_least_rounds_up(self):
+        self.assertEqual(radius_at_least(15), 20)
+        self.assertEqual(radius_at_least(20), 20)
+        self.assertEqual(radius_at_least(1), 5)
+
+    def test_at_least_caps_at_the_largest_radius(self):
+        self.assertEqual(radius_at_least(500), 200)
 
 
 class PickTest(unittest.TestCase):

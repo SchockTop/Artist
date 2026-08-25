@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from . import deals, geo, parser
 from .client import HttpClient, HttpError
 from .filters import SearchFilters
-from .locations import Location, LocationResolver, normalise_radius, plz_table
+from .locations import Location, LocationResolver, plz_table, radius_at_least
 from .models import Listing
 from .routes import Route
 
@@ -165,7 +165,9 @@ def search_route(
 ) -> SearchResult:
     """Mode B: everything within ``corridor_km`` of the driving route."""
     before = client.request_count
-    radius = normalise_radius(corridor_km)
+    # Never smaller than the corridor - otherwise ads at the edge of the
+    # corridor are filtered for but never searched for.
+    radius = radius_at_least(corridor_km)
     centres, warnings = plan_circles(resolver, route, radius, max_circles)
     if not centres:
         raise RuntimeError("could not map a single point of the route to a Kleinanzeigen location")

@@ -110,6 +110,12 @@ class RouteSearchTest(unittest.TestCase):
         self.assertEqual(positions, sorted(positions))
         self.assertGreaterEqual(len(positions), 2)  # Cologne and Warendorf
 
+    def test_search_radius_covers_the_whole_corridor(self):
+        result = search_route(self.client, self.resolver, self.filters, self.route,
+                              corridor_km=15, max_pages=1)
+        radii = {int(url.split("r")[-1]) for url in self.client.urls if "/k0" in url}
+        self.assertTrue(all(radius >= 15 for radius in radii), radii)
+
     def test_unlocatable_ads_can_be_kept(self):
         markup = FakeClient().markup.replace("51105 Kalk", "Irgendwo")
         client = FakeClient(markup=markup)

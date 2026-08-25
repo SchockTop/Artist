@@ -134,6 +134,17 @@ def normalise_radius(radius_km: float) -> int:
     return min(candidates, key=lambda r: (abs(r - radius_km), r))
 
 
+def radius_at_least(radius_km: float) -> int:
+    """Smallest supported radius that still covers ``radius_km``.
+
+    Route searches must never round the radius down: the corridor filter would
+    then promise a width the searches never looked at.
+    """
+    candidates = [r for r in SUPPORTED_RADII if r > 0]
+    covering = [r for r in candidates if r >= radius_km]
+    return min(covering) if covering else max(candidates)
+
+
 class LocationResolver:
     """Turns human input ("Köln", "50667", coordinates) into Kleinanzeigen ids."""
 
