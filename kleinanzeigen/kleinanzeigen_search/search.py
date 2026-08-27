@@ -14,6 +14,9 @@ from .routes import OSRM_TABLE_URL, Route, added_trip_minutes
 log = logging.getLogger(__name__)
 
 ADS_PER_PAGE = 25
+# The site stops paginating long before the reported hit count is exhausted;
+# asking beyond this just burns requests on empty pages.
+MAX_PAGE = 50
 
 
 @dataclass
@@ -23,10 +26,13 @@ class AreaCoverage:
     label: str
     fetched: int
     reported: int | None
+    exhausted: bool = False
 
     @property
     def complete(self) -> bool:
-        return self.reported is None or self.fetched >= self.reported
+        if self.exhausted:
+            return True  # paged until the site ran out, whatever it claimed
+        return self.reported is not None and self.fetched >= self.reported
 
 
 @dataclass
@@ -65,11 +71,148 @@ class SearchResult:
         if not short:
             return []
         worst = sorted(short, key=lambda a: (a.reported or 0) - a.fetched, reverse=True)[:3]
-        detail = ", ".join(f"{a.label} ({a.fetched} of {a.reported})" for a in worst)
+        detail = ", ".join(
+            f"{a.label} ({a.fetched} of {a.reported if a.reported is not None else 'unknown'})" for a in worst
+        )
         return [
             f"only saw part of the inventory in {len(short)} of {len(self.coverage)} areas: {detail}"
             f" - raise --pages, narrow the search term, or shrink --corridor for smaller areas"
         ]
+
+
+@dataclass
+class RequestBudget:
+    """A shared ceiling on result-page requests for one run."""
+
+    total: int | None = None
+    spent: int = 0
+
+    @property
+    def exhausted(self) -> bool:
+        return self.total is not None and self.spent >= self.total
+
+    @property
+    def remaining(self) -> int | None:
+        return None if self.total is None else max(0, self.total - self.spent)
+
+
+@dataclass
+class AreaSearch:
+    """One search area, paged lazily so depth can be bought where it pays."""
+
+    label: str
+    filters: SearchFilters
+    listings: dict[str, Listing] = field(default_factory=dict)
+    reported: int | None = None
+    pages: int = 0
+    exhausted: bool = False
+
+    @property
+    def deficit(self) -> int:
+        """Ads the site says exist here that we have not seen yet.
+
+        Capped at what pagination can actually reach, so a query reporting
+        40,000 hits does not look infinitely worth deepening.
+        """
+        if self.exhausted:
+            return 0
+        if self.reported is None:
+            # The site did not say how many hits there are, but the pages we
+            # got were full, so there is more. Rank it below any area with a
+            # known, larger backlog.
+            return ADS_PER_PAGE
+        reachable = min(self.reported, MAX_PAGE * ADS_PER_PAGE)
+        return max(0, reachable - len(self.listings))
+
+    @property
+    def coverage(self) -> AreaCoverage:
+        return AreaCoverage(self.label, len(self.listings), self.reported, self.exhausted)
+
+
+def fetch_next_page(client: HttpClient, area: AreaSearch, include_sponsored: bool = False) -> int:
+    """Fetch one more page of an area. Returns how many new ads it added."""
+    page = area.pages + 1
+    url = area.filters.for_page(page).url()
+    log.debug("GET %s", url)
+    markup = client.get(url)
+    area.pages = page
+
+    if area.reported is None:
+        area.reported = parser.parse_result_total(markup)
+
+    listings = parser.parse_listings(markup)
+    organic = [l for l in listings if not l.sponsored]
+    added = 0
+    for listing in listings:
+        # Sponsored "TOP" ads ignore the location filter entirely, so they are
+        # dropped unless explicitly asked for.
+        if listing.sponsored and not include_sponsored:
+            continue
+        if listing.ad_id not in area.listings:
+            area.listings[listing.ad_id] = listing
+            added += 1
+
+    if len(organic) < ADS_PER_PAGE or not organic:
+        area.exhausted = True          # last page
+    elif added == 0:
+        area.exhausted = True          # the site is repeating itself
+    elif page >= MAX_PAGE:
+        area.exhausted = True
+    elif area.reported is not None and page * ADS_PER_PAGE >= area.reported:
+        area.exhausted = True
+    return added
+
+
+def run_areas(
+    client: HttpClient,
+    areas: list[AreaSearch],
+    initial_pages: int = 2,
+    budget: RequestBudget | None = None,
+    include_sponsored: bool = False,
+    warnings: list[str] | None = None,
+) -> RequestBudget:
+    """Page every area, then spend what is left of the budget on depth.
+
+    Results come back newest first, so an area with more ads than pages
+    fetched hides its whole back catalogue - which is where the bargains sit.
+    The second pass therefore keeps buying pages for whichever area is still
+    hiding the most, so a dense town gets depth and an empty one does not.
+
+    Deepening only happens when a budget is set: without one there is no
+    stopping condition short of exhausting every area, which on a long route
+    is hundreds of requests nobody asked for.
+    """
+    budget = budget or RequestBudget()
+    warnings = warnings if warnings is not None else []
+
+    def page_once(area: AreaSearch) -> bool:
+        if area.exhausted or budget.exhausted:
+            return False
+        try:
+            fetch_next_page(client, area, include_sponsored)
+        except HttpError as exc:
+            warnings.append(f"search in {area.label} stopped: {exc}")
+            area.exhausted = True
+        budget.spent += 1
+        return True
+
+    for area in areas:                                   # breadth first
+        for _ in range(max(1, initial_pages)):
+            if not page_once(area):
+                break
+
+    while budget.total is not None and not budget.exhausted:  # then depth where it pays
+        hungry = [area for area in areas if area.deficit > 0]
+        if not hungry:
+            break
+        page_once(max(hungry, key=lambda a: a.deficit))
+
+    if budget.exhausted and any(area.deficit > 0 for area in areas):
+        warnings.append(
+            f"stopped after {budget.spent} page requests (--budget); "
+            f"{sum(a.deficit for a in areas)} ads in range were left unseen"
+        )
+    return budget
 
 
 def fetch_pages(
@@ -79,29 +222,12 @@ def fetch_pages(
     include_sponsored: bool = False,
 ) -> tuple[list[Listing], int | None, int]:
     """Fetch up to ``max_pages`` result pages, stopping when the site runs dry."""
-    collected: dict[str, Listing] = {}
-    total: int | None = None
-    pages = 0
-    for page in range(1, max_pages + 1):
-        url = filters.for_page(page).url()
-        log.debug("GET %s", url)
-        markup = client.get(url)
-        pages += 1
-        if total is None:
-            total = parser.parse_result_total(markup)
-        listings = parser.parse_listings(markup)
-        organic = [l for l in listings if not l.sponsored]
-        for listing in listings:
-            # Sponsored "TOP" ads ignore the location filter entirely, so they
-            # are dropped unless explicitly asked for.
-            if listing.sponsored and not include_sponsored:
-                continue
-            collected.setdefault(listing.ad_id, listing)
-        if len(organic) < ADS_PER_PAGE:
-            break  # last page
-        if total is not None and page * ADS_PER_PAGE >= total:
+    area = AreaSearch("", filters)
+    for _ in range(max_pages):
+        if area.exhausted:
             break
-    return list(collected.values()), total, pages
+        fetch_next_page(client, area, include_sponsored)
+    return list(area.listings.values()), area.reported, area.pages
 
 
 def _annotate_coordinates(listings: list[Listing]) -> int:
@@ -123,10 +249,16 @@ def search_city(
     max_pages: int = 2,
     include_sponsored: bool = False,
     score: bool = True,
+    budget: int | None = None,
 ) -> SearchResult:
     """Mode A: one place, one radius, the standard filters."""
     before = client.request_count
-    listings, total, pages = fetch_pages(client, filters, max_pages, include_sponsored)
+    warnings: list[str] = []
+    area = AreaSearch(location.label if location else "search", filters)
+    run_areas(client, [area], max_pages, RequestBudget(budget), include_sponsored, warnings)
+    listings = list(area.listings.values())
+    total = area.reported
+    pages = area.pages
     _annotate_coordinates(listings)
 
     centre = location.point if location else None
@@ -138,14 +270,18 @@ def search_city(
 
     if score:
         deals.evaluate(listings)
-    return SearchResult(
+    result = SearchResult(
         listings=listings,
         filters=filters,
         location=location,
         total_reported=total,
         pages_fetched=pages,
         requests=client.request_count - before,
+        warnings=warnings,
+        coverage=[area.coverage],
     )
+    result.warnings.extend(result.coverage_warnings())
+    return result
 
 
 def plan_circles(
@@ -197,6 +333,7 @@ def search_route(
     drive_time: bool = True,
     max_detour_min: float | None = None,
     table_url: str = OSRM_TABLE_URL,
+    budget: int | None = None,
 ) -> SearchResult:
     """Mode B: everything within ``corridor_km`` of the driving route."""
     before = client.request_count
@@ -207,23 +344,18 @@ def search_route(
     if not centres:
         raise RuntimeError("could not map a single point of the route to a Kleinanzeigen location")
 
+    areas = [AreaSearch(loc.label, filters.at_location(loc.id, radius)) for loc in centres]
+    run_areas(client, areas, max_pages, RequestBudget(budget), include_sponsored, warnings)
+
     collected: dict[str, Listing] = {}
-    coverage: list[AreaCoverage] = []
-    pages = 0
-    for location in centres:
-        area_filters = filters.at_location(location.id, radius)
-        try:
-            listings, reported, fetched = fetch_pages(client, area_filters, max_pages, include_sponsored)
-        except HttpError as exc:
-            warnings.append(f"search near {location.label} failed: {exc}")
-            continue
-        pages += fetched
-        coverage.append(AreaCoverage(location.label, len(listings), reported))
-        for listing in listings:
+    for area in areas:
+        for listing in area.listings.values():
             if listing.ad_id not in collected:
-                listing.found_near = location.label
+                listing.found_near = area.label
                 collected[listing.ad_id] = listing
 
+    coverage = [area.coverage for area in areas]
+    pages = sum(area.pages for area in areas)
     listings = list(collected.values())
     unresolved = _annotate_coordinates(listings)
     if unresolved:

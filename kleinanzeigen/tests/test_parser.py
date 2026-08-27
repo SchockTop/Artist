@@ -95,6 +95,16 @@ class PageMetaTest(unittest.TestCase):
     def test_result_total(self):
         self.assertEqual(parser.parse_result_total(MARKUP), 39183)
 
+    def test_result_total_with_a_category_filter(self):
+        # Picking a category changes the noun: "633 Musikinstrumente".
+        markup = ('<span class="breadcrump-summary">1 - 25 von 633 Musikinstrumente '
+                  'f&uuml;r &#8222;gitarre&#8220; in N&uuml;rnberg</span>')
+        self.assertEqual(parser.parse_result_total(markup), 633)
+
+    def test_result_total_when_nothing_matched(self):
+        markup = '<span class="breadcrump-summary">Es wurden keine Ergebnisse gefunden.</span>'
+        self.assertEqual(parser.parse_result_total(markup), 0)
+
     def test_result_total_missing(self):
         self.assertIsNone(parser.parse_result_total("<html></html>"))
 

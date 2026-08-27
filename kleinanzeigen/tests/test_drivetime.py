@@ -125,17 +125,20 @@ class CoverageTest(unittest.TestCase):
 
     def test_complete_coverage_is_silent(self):
         result = SearchResult(listings=[], filters=SearchFilters(query="x", ad_type=None),
-                              coverage=[AreaCoverage("Bonn", 12, 12), AreaCoverage("Köln", 5, None)])
+                              coverage=[AreaCoverage("Bonn", 12, 12),
+                                        AreaCoverage("Köln", 5, None, exhausted=True)])
         self.assertEqual(result.coverage_warnings(), [])
 
-    def test_route_search_reports_coverage(self):
+    def test_route_search_reports_coverage_per_area(self):
         client = FakeOsrmClient()
         result = search_route(client, LocationResolver(client),
                               SearchFilters(query="Fahrrad", ad_type=None),
                               Route(geo.sample_route([KOELN, BONN], 5.0)), corridor_km=20, max_pages=1)
         self.assertTrue(result.coverage)
-        # The fixture reports 39,183 hits but only holds a handful of ads.
-        self.assertTrue(any("only saw part of the inventory" in w for w in result.warnings))
+        # The fixture page is short, so every area really is exhausted - even
+        # though its summary line claims 39,183 hits.
+        self.assertTrue(all(area.complete for area in result.coverage))
+        self.assertEqual(result.coverage_warnings(), [])
 
 
 if __name__ == "__main__":

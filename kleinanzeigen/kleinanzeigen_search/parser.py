@@ -221,7 +221,10 @@ def parse_listings(markup: str) -> list[Listing]:
     return listings
 
 
-SUMMARY_RE = re.compile(r"von\s+([\d.]+)\s+Ergebnis")
+# The noun after the number changes with the filters: "39.183 Ergebnissen" for
+# a plain search, "633 Musikinstrumente" once a category is picked.
+SUMMARY_RE = re.compile(r"von\s+([\d.]+)\s+\S")
+NO_RESULTS_RE = re.compile(r"keine\s+Ergebnisse", re.IGNORECASE)
 
 
 def parse_result_total(markup: str) -> int | None:
@@ -230,6 +233,8 @@ def parse_result_total(markup: str) -> int | None:
     if not match:
         return None
     text = re.sub(r"<[^>]+>", "", match.group(1))
+    if NO_RESULTS_RE.search(text):
+        return 0
     hit = SUMMARY_RE.search(text)
     return int(hit.group(1).replace(".", "")) if hit else None
 

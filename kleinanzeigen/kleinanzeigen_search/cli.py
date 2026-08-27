@@ -43,7 +43,11 @@ def add_filter_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--shipping", action="store_true", help="only ads that offer shipping")
     parser.add_argument("--filter", dest="extra", action="append", default=[], metavar="SEGMENT",
                         help="extra URL filter segment copied from the site, e.g. 'zustand:neu' (repeatable)")
-    parser.add_argument("--pages", type=int, default=2, help="result pages per search area (25 ads each)")
+    parser.add_argument("--pages", type=int, default=2,
+                        help="result pages to fetch from every area up front (25 ads each)")
+    parser.add_argument("--budget", type=int, metavar="N",
+                        help="total result-page requests; anything left over is spent paging "
+                             "deeper into the areas still hiding the most ads")
     parser.add_argument("--include-sponsored", action="store_true",
                         help="keep TOP ads (they ignore the location filter)")
     parser.add_argument("--no-score", action="store_true", help="skip deal scoring")
@@ -89,10 +93,13 @@ def emit(result, args: argparse.Namespace) -> None:
 
     if args.format in ("table", "details"):
         summary = result.summary()
+        truncated = summary.get("areas_truncated") or 0
+        coverage = f" · {truncated} area(s) not fully seen" if truncated else " · full coverage"
         print(
             f"\n{summary['listings']} ads · median {summary['median_price'] or '-'} € "
             f"(p25 {summary['p25_price'] or '-'} / p75 {summary['p75_price'] or '-'}) · "
-            f"{summary['search_areas']} search area(s) · {summary['requests']} requests",
+            f"{summary['search_areas']} search area(s) · {summary['pages_fetched']} pages · "
+            f"{summary['requests']} requests{coverage}",
             file=sys.stderr,
         )
     for warning in result.warnings:
@@ -119,7 +126,8 @@ def cmd_city(args: argparse.Namespace) -> int:
 
     if location:
         filters = filters.at_location(location.id, normalise_radius(args.radius))
-    result = search_city(client, filters, location, args.pages, args.include_sponsored, not args.no_score)
+    result = search_city(client, filters, location, args.pages, args.include_sponsored,
+                         not args.no_score, budget=args.budget)
     emit(result, args)
     return 0
 
@@ -153,6 +161,7 @@ def cmd_route(args: argparse.Namespace) -> int:
         score=not args.no_score,
         drive_time=not args.no_drive_time,
         max_detour_min=args.max_detour_min,
+        budget=args.budget,
     )
     emit(result, args)
     return 0

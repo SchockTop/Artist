@@ -65,8 +65,18 @@ route: Köln → Kassel (247 km, ~2.6 h, via osrm)
 4   79     1 € VB   30 €  50321 Brühl           12 km @1   today  Werkbank aus Europaletten
 ```
 
-`off-route` reads *"12 km off the road, at kilometre 1 of the trip"*, and the list is ordered by
-that second number - so it doubles as a pick-up plan for the drive.
+```
+#   score  price    ref   location         detour   off-road  at km  age    title
+--  -----  -------  ----  ---------------  -------  --------  -----  -----  --------------------------
+3   100    12 €     30 €  50259 Pulheim    +9 min   13 km     0      3d     WERKBANK SPANNTISCH
+4   79     1 € VB   30 €  50321 Brühl      +7 min   12 km     1      today  Werkbank aus Europaletten
+```
+
+`detour` is the number a navigation app shows next to a suggested stop: the extra driving time
+for going *A → this ad → B* rather than straight from A to B. `off-road` is the straight-line
+distance to the road, and `at km` is how far into the trip it sits - so the list doubles as a
+pick-up plan for the drive. Cap the detour with `--max-detour-min 10`; that is usually what you
+actually mean, since 10 km of Autobahn is not 10 km of Landstraße.
 
 Four ways to hand over the route (pick one):
 
@@ -84,14 +94,51 @@ OpenStreetMap and turned into a real driving route with the public OSRM router.
 ### How the route search works
 
 1. The driving route comes back as a polyline (~250 km ≈ 60 points after smoothing).
-2. The polyline is covered with overlapping search circles of `--corridor` radius, and each circle
-   centre is mapped to the postcode Kleinanzeigen knows for that spot.
-3. Every circle is searched with your filters, results are merged and de-duplicated by ad id.
-4. Every ad's postcode is turned back into coordinates (bundled offline table) to compute its real
+2. The polyline is covered with overlapping search circles whose radius is the smallest the site
+   offers that still covers `--corridor`, and each circle centre is mapped to the postcode
+   Kleinanzeigen knows for that spot.
+3. Every circle is searched with your filters. Each area is paged **adaptively** - see below.
+4. Results are merged and de-duplicated by ad id.
+5. Every ad's postcode is turned back into coordinates (bundled offline table) to compute its
    distance to the road; anything further than `--corridor` is dropped.
-5. What remains is scored and sorted by position along the trip.
+6. The survivors are grouped by postcode and priced through OSRM's duration matrix in one request,
+   giving each ad its real added driving time.
+7. What remains is scored and sorted by position along the trip.
 
-A 250 km route at `--corridor 20 --pages 1` costs about 17 requests and 45 seconds.
+A 250 km route at `--corridor 20 --pages 1` costs about 18 requests and 45 seconds.
+
+### Depth, coverage and `--budget`
+
+Results come back **newest first**, so an area holding more ads than you page through hides its
+whole back catalogue - which is exactly where the bargains are. A single 20 km circle around a city
+can report 600 hits; two pages is the newest 8 % of it.
+
+So depth is bought, not fixed:
+
+* `--pages N` fetches N pages from *every* area up front, for breadth.
+* `--budget N` caps the total number of result-page requests. Whatever is left after the first pass
+  is spent on the area still hiding the most ads, one page at a time, until every area is exhausted
+  or the budget runs out. A dense town gets depth; an empty stretch of countryside does not.
+* Either way the run reports what it actually saw, and says so when it fell short:
+
+```
+189 ads · median 100 € · 5 search area(s) · 10 pages · 17 requests · 3 area(s) not fully seen
+warning: only saw part of the inventory in 3 of 5 areas: Nürnberg (50 of 633), Fürth (50 of 190)
+  - raise --pages/--budget, narrow the search term, or shrink --corridor for smaller areas
+```
+
+Without `--budget` the areas are simply paged `--pages` deep, exactly as before - deepening is
+opt-in, so a long route can never quietly turn into hundreds of requests.
+
+It is worth the requests. The same route (Pfaffenhofen a.d. Ilm → Nürnberg Hbf, "Gitarre" in
+Musikinstrumente, 20 km corridor) measured against the live site:
+
+| | pages | requests | ads found |
+| --- | --- | --- | --- |
+| `--pages 2` | 10 | 17 | 189 |
+| `--pages 1 --budget 80` | 61 | 62 | **996** |
+
+The extra 807 ads were not further away - they were simply older than the newest 50 in each area.
 
 ## Output formats
 
@@ -129,9 +176,12 @@ python3 -m kleinanzeigen_search {city,route,where,categories} --help
 ```
 
 Shared filters: `--min-price` `--max-price` `--category-id` `--seller {privat,gewerblich}`
-`--type {angebote,gesuche}` `--sort {neueste,preis,entfernung}` `--shipping` `--pages`
+`--type {angebote,gesuche}` `--sort {neueste,preis,entfernung}` `--shipping` `--pages` `--budget`
 `--include-sponsored` `--no-score` `--min-score` `--format` `--limit` `-o`
 `--filter SEGMENT` (any extra filter copied from a browser URL, e.g. `--filter zustand:neu`).
+
+Route only: `--corridor` `--max-detour-min` `--no-drive-time` `--max-areas` `--keep-unlocated`
+`--osrm-url`.
 
 Category ids:
 
@@ -160,14 +210,14 @@ Responses are cached under `~/.cache/kleinanzeigen_search` for 15 minutes so rep
 * Postcode coordinates: [GeoNames](https://www.geonames.org/) postal codes, CC BY 4.0
   (bundled as `kleinanzeigen_search/data/plz_de.csv.gz`, rebuild with `tools/build_plz_table.py`).
 * Geocoding: [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) - ODbL.
-* Driving routes: [OSRM demo server](https://router.project-osrm.org/) - light use only; point
-  `--osrm-url` at your own instance for heavy use (see `routes.OSRM_URL`).
+* Driving routes and detour times: [OSRM demo server](https://router.project-osrm.org/) - light use
+  only; point `--osrm-url` at your own instance for heavy use.
 
 ## Tests
 
 ```bash
 cd kleinanzeigen
-python3 -m unittest discover -s tests -t .   # 130 tests, no network access
+python3 -m unittest discover -s tests -t .   # 170 tests, no network access
 ```
 
 The HTML fixture is a trimmed real result page, so parsing regressions surface immediately.
