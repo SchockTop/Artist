@@ -9,11 +9,24 @@ from .client import HttpClient, HttpError
 from .filters import SearchFilters
 from .locations import Location, LocationResolver, plz_table, radius_at_least
 from .models import Listing
-from .routes import Route
+from .routes import OSRM_TABLE_URL, Route, added_trip_minutes
 
 log = logging.getLogger(__name__)
 
 ADS_PER_PAGE = 25
+
+
+@dataclass
+class AreaCoverage:
+    """How much of one search area's inventory we actually looked at."""
+
+    label: str
+    fetched: int
+    reported: int | None
+
+    @property
+    def complete(self) -> bool:
+        return self.reported is None or self.fetched >= self.reported
 
 
 @dataclass
@@ -28,6 +41,7 @@ class SearchResult:
     requests: int = 0
     warnings: list[str] = field(default_factory=list)
     corridor_km: float | None = None
+    coverage: list[AreaCoverage] = field(default_factory=list)
 
     def summary(self) -> dict:
         data = deals.summarise(self.listings)
@@ -36,8 +50,26 @@ class SearchResult:
             requests=self.requests,
             total_reported=self.total_reported,
             search_areas=len(self.centres) or (1 if self.location else 0),
+            areas_truncated=sum(1 for area in self.coverage if not area.complete),
         )
         return data
+
+    def coverage_warnings(self) -> list[str]:
+        """Areas where the site had more ads than we paged through.
+
+        This is the failure mode that matters most: results are ordered newest
+        first, so a truncated area silently hides every older ad in it - which
+        is exactly where the bargains sit.
+        """
+        short = [area for area in self.coverage if not area.complete]
+        if not short:
+            return []
+        worst = sorted(short, key=lambda a: (a.reported or 0) - a.fetched, reverse=True)[:3]
+        detail = ", ".join(f"{a.label} ({a.fetched} of {a.reported})" for a in worst)
+        return [
+            f"only saw part of the inventory in {len(short)} of {len(self.coverage)} areas: {detail}"
+            f" - raise --pages, narrow the search term, or shrink --corridor for smaller areas"
+        ]
 
 
 def fetch_pages(
@@ -162,6 +194,9 @@ def search_route(
     include_sponsored: bool = False,
     keep_unlocated: bool = False,
     score: bool = True,
+    drive_time: bool = True,
+    max_detour_min: float | None = None,
+    table_url: str = OSRM_TABLE_URL,
 ) -> SearchResult:
     """Mode B: everything within ``corridor_km`` of the driving route."""
     before = client.request_count
@@ -173,15 +208,17 @@ def search_route(
         raise RuntimeError("could not map a single point of the route to a Kleinanzeigen location")
 
     collected: dict[str, Listing] = {}
+    coverage: list[AreaCoverage] = []
     pages = 0
     for location in centres:
         area_filters = filters.at_location(location.id, radius)
         try:
-            listings, _, fetched = fetch_pages(client, area_filters, max_pages, include_sponsored)
+            listings, reported, fetched = fetch_pages(client, area_filters, max_pages, include_sponsored)
         except HttpError as exc:
             warnings.append(f"search near {location.label} failed: {exc}")
             continue
         pages += fetched
+        coverage.append(AreaCoverage(location.label, len(listings), reported))
         for listing in listings:
             if listing.ad_id not in collected:
                 listing.found_near = location.label
@@ -204,10 +241,19 @@ def search_route(
         if detour <= corridor_km:
             kept.append(listing)
 
+    if drive_time and kept:
+        try:
+            kept = annotate_drive_time(client, kept, route, table_url)
+        except (HttpError, RuntimeError, ValueError) as exc:
+            warnings.append(f"driving times unavailable ({exc}) - falling back to straight-line distance")
+        else:
+            if max_detour_min is not None:
+                kept = [l for l in kept if l.detour_min is None or l.detour_min <= max_detour_min]
+
     kept.sort(key=lambda l: (l.along_route_km is None, l.along_route_km or 0))
     if score:
         deals.evaluate(kept)
-    return SearchResult(
+    result = SearchResult(
         listings=kept,
         filters=filters,
         route=route,
@@ -216,4 +262,34 @@ def search_route(
         requests=client.request_count - before,
         warnings=warnings,
         corridor_km=corridor_km,
+        coverage=coverage,
     )
+    result.warnings.extend(result.coverage_warnings())
+    return result
+
+
+def annotate_drive_time(
+    client: HttpClient,
+    listings: list[Listing],
+    route: Route,
+    table_url: str = OSRM_TABLE_URL,
+) -> list[Listing]:
+    """Fill in ``detour_min``: the extra driving time for stopping at each ad.
+
+    Ads are grouped by coordinate first - a postcode is the finest location the
+    site exposes, so dozens of ads usually share a handful of points and the
+    whole result set costs one or two matrix requests.
+    """
+    groups: dict[geo.Point, list[Listing]] = {}
+    for listing in listings:
+        if listing.point is not None:
+            groups.setdefault(listing.point, []).append(listing)
+    if not groups:
+        return listings
+
+    stops = list(groups)
+    minutes = added_trip_minutes(client, route.points[0], route.points[-1], stops, table_url)
+    for point, extra in zip(stops, minutes):
+        for listing in groups[point]:
+            listing.detour_min = extra
+    return listings

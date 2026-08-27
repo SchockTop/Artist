@@ -41,3 +41,29 @@ class FakeClient:
 
     def resolve_redirect(self, url: str) -> str:
         return url
+
+
+class FakeOsrmClient(FakeClient):
+    """FakeClient that also answers OSRM duration-matrix requests.
+
+    Durations are synthesised from the coordinates so the maths stays
+    deterministic: one second per 0.001 degree of separation.
+    """
+
+    def __init__(self, markup: str = FIXTURE, table_limit: int = 100):
+        super().__init__(markup)
+        self.table_limit = table_limit
+        self.matrix_calls: list[int] = []
+
+    def get_json(self, url: str, use_cache: bool = True):
+        if "/table/v1/" not in url:
+            return super().get_json(url, use_cache)
+        self.urls.append(url)
+        self.request_count += 1
+        raw = url.split("/table/v1/driving/")[1].split("?")[0]
+        points = [tuple(float(v) for v in pair.split(",")) for pair in raw.split(";")]
+        self.matrix_calls.append(len(points))
+        if len(points) > self.table_limit:
+            return {"code": "TooBig", "message": "too many coordinates"}
+        durations = [[abs(a[0] - b[0]) * 1000 + abs(a[1] - b[1]) * 1000 for b in points] for a in points]
+        return {"code": "Ok", "durations": durations}

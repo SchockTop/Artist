@@ -25,6 +25,9 @@ from .locations import geocode
 log = logging.getLogger(__name__)
 
 OSRM_URL = "https://router.project-osrm.org/route/v1/driving/{coords}?overview=full&geometries=polyline"
+OSRM_TABLE_URL = "https://router.project-osrm.org/table/v1/driving/{coords}?annotations=duration"
+# The public OSRM server refuses matrices with more than 100 coordinates.
+OSRM_TABLE_LIMIT = 100
 COORD_RE = re.compile(r"^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$")
 
 
@@ -168,3 +171,45 @@ def load_gpx(path: str) -> list[geo.Point]:
             if lat and lon:
                 points.append((float(lat), float(lon)))
     return points
+
+
+# --------------------------------------------------------- real driving detour
+def duration_matrix(client: HttpClient, points: list[geo.Point], table_url: str = OSRM_TABLE_URL) -> list[list[float | None]]:
+    """Pairwise driving durations in seconds for up to ``OSRM_TABLE_LIMIT`` points."""
+    if len(points) > OSRM_TABLE_LIMIT:
+        raise ValueError(f"at most {OSRM_TABLE_LIMIT} points per matrix request")
+    coords = ";".join(f"{lon:.6f},{lat:.6f}" for lat, lon in points)
+    payload = client.get_json(table_url.format(coords=coords))
+    if payload.get("code") != "Ok":
+        raise RuntimeError(f"duration matrix failed: {payload.get('message') or payload.get('code')}")
+    return payload["durations"]
+
+
+def added_trip_minutes(
+    client: HttpClient,
+    origin: geo.Point,
+    destination: geo.Point,
+    stops: list[geo.Point],
+    table_url: str = OSRM_TABLE_URL,
+) -> list[float | None]:
+    """Extra driving time for visiting each stop on the way from A to B.
+
+    This is the number a navigation app shows next to a suggested stop:
+    ``drive(A→stop) + drive(stop→B) − drive(A→B)``, in minutes.  One request
+    covers up to 98 stops, so a whole result set usually costs one or two.
+    """
+    if not stops:
+        return []
+    out: list[float | None] = []
+    batch_size = OSRM_TABLE_LIMIT - 2
+    for start in range(0, len(stops), batch_size):
+        batch = stops[start : start + batch_size]
+        matrix = duration_matrix(client, [origin, destination] + batch, table_url)
+        baseline = matrix[0][1]
+        for index in range(len(batch)):
+            there, back = matrix[0][2 + index], matrix[2 + index][1]
+            if there is None or back is None or baseline is None:
+                out.append(None)
+            else:
+                out.append(round((there + back - baseline) / 60.0, 1))
+    return out

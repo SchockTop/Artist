@@ -18,15 +18,19 @@ def _truncate(text: str, width: int) -> str:
 def render_table(result: SearchResult, limit: int | None = None, width: int = 46) -> str:
     listings = result.listings[:limit] if limit else result.listings
     route_mode = result.route is not None
-    headers = ["#", "score", "price", "ref", "location", "off-route" if route_mode else "dist", "age", "title"]
+    headers = ["#", "score", "price", "ref", "location"]
+    headers += ["detour", "off-road", "at km"] if route_mode else ["dist"]
+    headers += ["age", "title"]
     rows: list[list[str]] = []
     for index, listing in enumerate(listings, start=1):
         if route_mode:
-            distance = f"{listing.detour_km:.0f} km" if listing.detour_km is not None else "?"
-            if listing.along_route_km is not None:
-                distance += f" @{listing.along_route_km:.0f}"
+            columns = [
+                f"+{listing.detour_min:.0f} min" if listing.detour_min is not None else "?",
+                f"{listing.detour_km:.0f} km" if listing.detour_km is not None else "?",
+                f"{listing.along_route_km:.0f}" if listing.along_route_km is not None else "?",
+            ]
         else:
-            distance = f"{listing.distance_km:.0f} km" if listing.distance_km is not None else "?"
+            columns = [f"{listing.distance_km:.0f} km" if listing.distance_km is not None else "?"]
         age = "?" if listing.age_days is None else (
             "today" if listing.age_days < 1 else f"{listing.age_days:.0f}d"
         )
@@ -36,7 +40,7 @@ def render_table(result: SearchResult, limit: int | None = None, width: int = 46
             listing.price_label,
             f"{listing.reference_price} €" if listing.reference_price else "-",
             _truncate(listing.location_label, 22),
-            distance,
+            *columns,
             age,
             _truncate(listing.title, width),
         ])
@@ -55,6 +59,8 @@ def render_details(result: SearchResult, limit: int = 10) -> str:
         head = f"{index}. [{'-' if listing.deal_score is None else f'{listing.deal_score:.0f}'}] {listing.title}"
         out.append(head)
         line = f"   {listing.price_label} · {listing.location_label}"
+        if listing.detour_min is not None:
+            line += f" · +{listing.detour_min:.0f} min detour"
         if listing.detour_km is not None:
             line += f" · {listing.detour_km:.0f} km off route (km {listing.along_route_km:.0f} of the trip)"
         elif listing.distance_km is not None:
@@ -92,7 +98,8 @@ def render_json(result: SearchResult) -> str:
 
 CSV_FIELDS = [
     "ad_id", "title", "price_eur", "price_type", "reference_price", "deal_score",
-    "plz", "ort", "detour_km", "along_route_km", "distance_km", "posted_raw", "url", "deal_reasons",
+    "plz", "ort", "detour_min", "detour_km", "along_route_km", "distance_km",
+    "posted_raw", "url", "deal_reasons",
 ]
 
 
@@ -156,7 +163,9 @@ listings.forEach(item => {{
   marker.bindPopup(
     '<div class="popup"><h4><a href="' + item.url + '" target="_blank" rel="noopener">' + item.title + '</a></h4>' +
     '<p><b>' + item.price + '</b>' + (item.reference ? ' · typical ' + item.reference + ' €' : '') + '</p>' +
-    '<p>' + item.location + (item.detour !== null ? ' · ' + item.detour + ' km off route' : '') + '</p>' +
+    '<p>' + item.location +
+      (item.minutes !== null && item.minutes !== undefined ? ' · +' + item.minutes + ' min detour' : '') +
+      (item.detour !== null ? ' · ' + item.detour + ' km off route' : '') + '</p>' +
     '<p>' + (item.score === null ? 'no score' : 'score ' + item.score) + '</p>' +
     '<p style="color:#475569">' + item.reasons + '</p></div>'
   );
@@ -200,6 +209,7 @@ def render_map(result: SearchResult, title: str | None = None) -> str:
             "reference": listing.reference_price,
             "location": html.escape(listing.location_label),
             "detour": listing.detour_km,
+            "minutes": listing.detour_min,
             "score": listing.deal_score,
             "reasons": html.escape(" · ".join(listing.deal_reasons)),
             "url": listing.url,

@@ -151,6 +151,8 @@ def cmd_route(args: argparse.Namespace) -> int:
         include_sponsored=args.include_sponsored,
         keep_unlocated=args.keep_unlocated,
         score=not args.no_score,
+        drive_time=not args.no_drive_time,
+        max_detour_min=args.max_detour_min,
     )
     emit(result, args)
     return 0
@@ -209,6 +211,10 @@ def build_parser() -> argparse.ArgumentParser:
     route.add_argument("--corridor", type=float, default=15.0,
                        help="how far off the route you are willing to drive, in km (default: 15)")
     route.add_argument("--max-areas", type=int, default=40, help="cap on search areas along the route")
+    route.add_argument("--max-detour-min", type=float, metavar="MIN",
+                       help="drop ads that add more than this many minutes to the drive")
+    route.add_argument("--no-drive-time", action="store_true",
+                       help="skip the driving-time lookup and rank by straight-line distance only")
     route.add_argument("--osrm-url", default=OSRM_URL,
                        help="routing service URL template; point it at your own OSRM instance for heavy use")
     route.add_argument("--keep-unlocated", action="store_true",

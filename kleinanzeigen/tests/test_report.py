@@ -18,10 +18,11 @@ def sample_result(route: bool = False) -> SearchResult:
     listings = [
         Listing(ad_id="1", title="Fahrrad <gut & günstig>", url="https://example.invalid/1", price_eur=120,
                 price_type="vb", plz="51105", ort="Kalk", lat=50.92, lon=7.00, deal_score=81.0,
-                reference_price=200, deal_reasons=["40% below the median"], detour_km=3.0, along_route_km=5.0),
+                reference_price=200, deal_reasons=["40% below the median"], detour_km=3.0,
+                along_route_km=5.0, detour_min=9.0),
         Listing(ad_id="2", title="Rennrad", url="https://example.invalid/2", price_eur=None, price_type="none",
                 plz="53111", ort="Bonn", lat=50.73, lon=7.10, deal_reasons=["no price stated - ask the seller"],
-                detour_km=1.0, along_route_km=28.0),
+                detour_km=1.0, along_route_km=28.0, detour_min=2.0),
     ]
     filters = SearchFilters(query="Fahrrad", ad_type=None)
     if route:
@@ -39,8 +40,14 @@ class TableTest(unittest.TestCase):
 
     def test_route_mode_shows_detour(self):
         text = report.render_table(sample_result(route=True))
-        self.assertIn("off-route", text)
-        self.assertIn("3 km @5", text)
+        self.assertIn("detour", text)
+        self.assertIn("+9 min", text)
+        self.assertIn("3 km", text)
+
+    def test_city_mode_has_no_detour_columns(self):
+        text = report.render_table(sample_result())
+        self.assertIn("dist", text)
+        self.assertNotIn("off-road", text)
 
     def test_limit(self):
         self.assertEqual(len(report.render_table(sample_result(), limit=1).splitlines()), 3)
@@ -56,6 +63,7 @@ class DetailsTest(unittest.TestCase):
         self.assertIn("40% below the median", text)
         self.assertIn("https://example.invalid/1", text)
         self.assertIn("km off route", text)
+        self.assertIn("+9 min detour", text)
 
 
 class JsonTest(unittest.TestCase):
@@ -78,6 +86,7 @@ class CsvTest(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0]["ad_id"], "1")
         self.assertEqual(rows[0]["deal_reasons"], "40% below the median")
+        self.assertEqual(rows[0]["detour_min"], "9.0")
 
 
 class MapTest(unittest.TestCase):
@@ -86,6 +95,9 @@ class MapTest(unittest.TestCase):
         self.assertIn("leaflet", html)
         self.assertIn('"lat": 50.92', html)
         self.assertIn("[50.938, 6.959]", html)
+
+    def test_map_carries_drive_time(self):
+        self.assertIn('"minutes": 9.0', report.render_map(sample_result(route=True)))
 
     def test_titles_are_escaped(self):
         html = report.render_map(sample_result())

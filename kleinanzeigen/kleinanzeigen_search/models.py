@@ -27,7 +27,8 @@ class Listing:
     lat: float | None = None
     lon: float | None = None
     distance_km: float | None = None       # to the search centre (city mode)
-    detour_km: float | None = None         # to the route (route mode)
+    detour_km: float | None = None         # straight line to the route (route mode)
+    detour_min: float | None = None        # extra driving time for stopping here
     along_route_km: float | None = None    # how far into the trip it sits
     found_near: str | None = None          # label of the search circle that found it
     deal_score: float | None = None
