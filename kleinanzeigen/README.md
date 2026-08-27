@@ -133,12 +133,17 @@ opt-in, so a long route can never quietly turn into hundreds of requests.
 It is worth the requests. The same route (Pfaffenhofen a.d. Ilm → Nürnberg Hbf, "Gitarre" in
 Musikinstrumente, 20 km corridor) measured against the live site:
 
-| | pages | requests | ads found |
-| --- | --- | --- | --- |
-| `--pages 2` | 10 | 17 | 189 |
-| `--pages 1 --budget 80` | 61 | 62 | **996** |
+| run | pages | requests | ads found | coverage |
+| --- | --- | --- | --- | --- |
+| `--pages 2` (no deepening) | 10 | 17 | 189 | 3 of 5 areas truncated |
+| every area paged to exhaustion | 61 | 62 | **996** | complete |
 
 The extra 807 ads were not further away - they were simply older than the newest 50 in each area.
+
+Filtering at the source is what makes full coverage cheap, because it shrinks each area's inventory
+before paging starts. The same route with `--min-price 150 --max-price 600 --pages 1 --budget 80`
+reached **complete coverage of all five areas in 23 requests**, returning 318 ads in that price
+band - fewer requests than the unfiltered shallow run, and nothing left unseen.
 
 ## Output formats
 
