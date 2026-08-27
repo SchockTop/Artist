@@ -196,10 +196,12 @@ def run_areas(
         budget.spent += 1
         return True
 
-    for area in areas:                                   # breadth first
-        for _ in range(max(1, initial_pages)):
-            if not page_once(area):
-                break
+    # Breadth first, round robin: every area gets its first page before any
+    # gets a second, so a budget too small for the whole route still covers
+    # all of it thinly rather than the first few areas deeply.
+    for _ in range(max(1, initial_pages)):
+        for area in areas:
+            page_once(area)
 
     while budget.total is not None and not budget.exhausted:  # then depth where it pays
         hungry = [area for area in areas if area.deficit > 0]
@@ -207,7 +209,13 @@ def run_areas(
             break
         page_once(max(hungry, key=lambda a: a.deficit))
 
-    if budget.exhausted and any(area.deficit > 0 for area in areas):
+    unopened = [area for area in areas if area.pages == 0]
+    if unopened:
+        warnings.append(
+            f"--budget ran out before {len(unopened)} of {len(areas)} areas were searched at all "
+            f"(first missed: {unopened[0].label})"
+        )
+    elif budget.exhausted and any(area.deficit > 0 for area in areas):
         warnings.append(
             f"stopped after {budget.spent} page requests (--budget); "
             f"{sum(a.deficit for a in areas)} ads in range were left unseen"

@@ -107,6 +107,20 @@ class RunAreasTest(unittest.TestCase):
         per_area = {loc: sum(1 for l, _ in client.page_requests if l == loc) for loc in (1, 2)}
         self.assertEqual(per_area[1], per_area[2])
 
+    def test_a_small_budget_still_touches_every_area(self):
+        client = PagedFakeClient({1: 900, 2: 900, 3: 900})
+        areas = [area(1, "a"), area(2, "b"), area(3, "c")]
+        run_areas(client, areas, initial_pages=3, budget=RequestBudget(3))
+        self.assertEqual(sorted(loc for loc, _ in client.page_requests), [1, 2, 3])
+        self.assertTrue(all(a.pages == 1 for a in areas))
+
+    def test_areas_never_reached_are_reported(self):
+        client = PagedFakeClient({1: 900, 2: 900, 3: 900})
+        warnings: list[str] = []
+        run_areas(client, [area(1, "a"), area(2, "b"), area(3, "c")],
+                  initial_pages=1, budget=RequestBudget(2), warnings=warnings)
+        self.assertTrue(any("were searched at all" in w for w in warnings), warnings)
+
     def test_budget_shortfall_is_reported(self):
         client = PagedFakeClient({1: 5000})
         warnings: list[str] = []
