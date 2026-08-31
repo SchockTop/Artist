@@ -294,13 +294,23 @@ def search_city(
 
 def plan_circles(
     resolver: LocationResolver,
-    route: Route,
+    route: "Route | list[Route]",
     radius_km: int,
     max_circles: int = 40,
 ) -> tuple[list[Location], list[str]]:
-    """Kleinanzeigen locations whose search radii blanket the route."""
+    """Kleinanzeigen locations whose search radii blanket the route(s).
+
+    Several roads between the same two places overlap heavily, so their circles
+    are merged and de-duplicated: the alternatives only cost requests where
+    they actually run through different towns.
+    """
     warnings: list[str] = []
-    centres = geo.cover_route(route.points, radius_km)
+    routes = [route] if isinstance(route, Route) else list(route)
+    centres: list[geo.Point] = []
+    for one in routes:
+        for point in geo.cover_route(one.points, radius_km):
+            if all(geo.haversine_km(point, seen) > radius_km * 0.7 for seen in centres):
+                centres.append(point)
     if len(centres) > max_circles:
         warnings.append(
             f"route needs {len(centres)} search areas at r={radius_km} km; "
@@ -331,7 +341,7 @@ def search_route(
     client: HttpClient,
     resolver: LocationResolver,
     filters: SearchFilters,
-    route: Route,
+    route: "Route | list[Route]",
     corridor_km: float = 15.0,
     max_pages: int = 1,
     max_circles: int = 40,
@@ -343,12 +353,18 @@ def search_route(
     table_url: str = OSRM_TABLE_URL,
     budget: int | None = None,
 ) -> SearchResult:
-    """Mode B: everything within ``corridor_km`` of the driving route."""
+    """Mode B: everything within ``corridor_km`` of the driving route(s).
+
+    ``route`` may be a single Route or several alternative roads between the
+    same two places; an ad counts as on the way if any of them passes near it.
+    """
     before = client.request_count
+    routes = [route] if isinstance(route, Route) else list(route)
+    primary = routes[0]
     # Never smaller than the corridor - otherwise ads at the edge of the
     # corridor are filtered for but never searched for.
     radius = radius_at_least(corridor_km)
-    centres, warnings = plan_circles(resolver, route, radius, max_circles)
+    centres, warnings = plan_circles(resolver, routes, radius, max_circles)
     if not centres:
         raise RuntimeError("could not map a single point of the route to a Kleinanzeigen location")
 
@@ -375,7 +391,12 @@ def search_route(
             if keep_unlocated:
                 kept.append(listing)
             continue
-        detour, along = geo.distance_to_route_km(listing.point, route.points)
+        # With alternatives, an ad counts as "on the way" if ANY of the roads
+        # passes near it; the position along the trip comes from that road.
+        detour, along = min(
+            (geo.distance_to_route_km(listing.point, one.points) for one in routes),
+            key=lambda pair: pair[0],
+        )
         listing.detour_km = round(detour, 1)
         listing.along_route_km = round(along, 1)
         if detour <= corridor_km:
@@ -383,7 +404,7 @@ def search_route(
 
     if drive_time and kept:
         try:
-            kept = annotate_drive_time(client, kept, route, table_url)
+            kept = annotate_drive_time(client, kept, primary, table_url)
         except (HttpError, RuntimeError, ValueError) as exc:
             warnings.append(f"driving times unavailable ({exc}) - falling back to straight-line distance")
         else:
@@ -396,7 +417,7 @@ def search_route(
     result = SearchResult(
         listings=kept,
         filters=filters,
-        route=route,
+        route=primary,
         centres=centres,
         pages_fetched=pages,
         requests=client.request_count - before,

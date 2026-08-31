@@ -164,3 +164,53 @@ class SearchIntegrationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AlternativeRoutesTest(unittest.TestCase):
+    """Several roads between the same two places are searched as one corridor."""
+
+    def setUp(self):
+        from kleinanzeigen_search import geo as _geo
+        from kleinanzeigen_search.locations import LocationResolver
+        from kleinanzeigen_search.routes import Route
+        from kleinanzeigen_search.search import plan_circles, search_route
+        from tests.fakes import FakeOsrmClient
+        self.geo, self.Route = _geo, Route
+        self.plan_circles, self.search_route = plan_circles, search_route
+        self.LocationResolver, self.FakeOsrmClient = LocationResolver, FakeOsrmClient
+        self.main = Route(_geo.sample_route([KOELN, BONN], 5.0), ["Köln", "Bonn"])
+        # A detour road bulging east of the direct line.
+        self.alt = Route(_geo.sample_route([KOELN, (50.84, 7.35), BONN], 5.0), ["Köln", "Bonn"])
+
+    def test_overlapping_roads_do_not_double_the_areas(self):
+        resolver = self.LocationResolver(self.FakeOsrmClient())
+        alone, _ = self.plan_circles(resolver, self.main, radius_km=20)
+        both, _ = self.plan_circles(resolver, [self.main, self.main], radius_km=20)
+        self.assertEqual(len(alone), len(both))
+
+    def test_a_different_road_adds_areas(self):
+        resolver = self.LocationResolver(self.FakeOsrmClient())
+        alone, _ = self.plan_circles(resolver, self.main, radius_km=10)
+        both, _ = self.plan_circles(resolver, [self.main, self.alt], radius_km=10)
+        self.assertGreater(len(both), len(alone))
+
+    def test_single_route_still_accepted(self):
+        resolver = self.LocationResolver(self.FakeOsrmClient())
+        centres, warnings = self.plan_circles(resolver, self.main, radius_km=20)
+        self.assertTrue(centres)
+        self.assertEqual(warnings, [])
+
+    def test_detour_uses_the_nearest_road(self):
+        client = self.FakeOsrmClient()
+        near_alt_only = (50.84, 7.34)          # right on the alternative, far from the main road
+        main_only = self.geo.distance_to_route_km(near_alt_only, self.main.points)[0]
+        with_alt = min(self.geo.distance_to_route_km(near_alt_only, r.points)[0]
+                       for r in (self.main, self.alt))
+        self.assertLess(with_alt, main_only)
+
+    def test_result_reports_the_primary_route(self):
+        client = self.FakeOsrmClient()
+        result = self.search_route(client, self.LocationResolver(client),
+                                   SearchFilters(query="Gitarre", ad_type=None),
+                                   [self.main, self.alt], corridor_km=20, max_pages=1)
+        self.assertIs(result.route, self.main)

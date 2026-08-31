@@ -138,21 +138,26 @@ def cmd_route(args: argparse.Namespace) -> int:
     filters = build_filters(args)
 
     waypoints = [w.strip() for w in (args.waypoints or "").split(";") if w.strip()]
-    route = build_route(
+    routes = build_route(
         client,
         google_maps_url=args.maps_url,
         waypoints=waypoints,
         polyline=args.polyline,
         gpx_path=args.gpx,
         osrm_url=args.osrm_url,
+        alternatives=args.alternatives,
+        want_all=True,
     )
-    print(f"route: {route.describe()}", file=sys.stderr)
+    for index, one in enumerate(routes):
+        print(f"route{'' if index == 0 else f' (alt {index})'}: {one.describe()}", file=sys.stderr)
+    if args.alternatives and len(routes) == 1:
+        print("note: the router offered no alternative road for this trip", file=sys.stderr)
 
     result = search_route(
         client,
         resolver,
         filters,
-        route,
+        routes,
         corridor_km=args.corridor,
         max_pages=args.pages,
         max_circles=args.max_areas,
@@ -220,6 +225,8 @@ def build_parser() -> argparse.ArgumentParser:
     route.add_argument("--corridor", type=float, default=15.0,
                        help="how far off the route you are willing to drive, in km (default: 15)")
     route.add_argument("--max-areas", type=int, default=40, help="cap on search areas along the route")
+    route.add_argument("--alternatives", type=int, default=0, metavar="N",
+                       help="also search along up to N alternative roads between the same two places")
     route.add_argument("--max-detour-min", type=float, metavar="MIN",
                        help="drop ads that add more than this many minutes to the drive")
     route.add_argument("--no-drive-time", action="store_true",
