@@ -12,6 +12,9 @@ import logging
 import pathlib
 import sys
 
+import datetime as dt
+import json
+
 from . import report
 from .client import HttpClient, HttpError
 from .filters import SearchFilters
@@ -19,6 +22,7 @@ from .locations import LocationResolver, normalise_radius
 from .parser import parse_category_index, parse_suggested_categories
 from .routes import OSRM_URL, build_route
 from .search import search_city, search_route
+from .watch import WatchStore, render_digest
 
 DEFAULT_CACHE = pathlib.Path.home() / ".cache" / "kleinanzeigen_search"
 CATEGORY_INDEX_URL = "https://www.kleinanzeigen.de/s-kategorien.html"
@@ -200,6 +204,63 @@ def cmd_categories(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_watch(args: argparse.Namespace) -> int:
+    """Run every configured route/keyword pair and report only what changed."""
+    config = json.loads(pathlib.Path(args.config).expanduser().read_text(encoding="utf-8"))
+    slot = args.slot or ("morning" if dt.datetime.now().hour < 12 else "evening")
+    keywords = config["slots"].get(slot)
+    if not keywords:
+        print(f"error: no keyword slot named {slot!r} in {args.config}", file=sys.stderr)
+        return 2
+
+    client = make_client(args)
+    resolver = LocationResolver(client)
+    store = WatchStore(config.get("state_file", "~/.local/state/kleinanzeigen_search/watches.json"))
+    defaults = config.get("defaults", {})
+    home = config["home"]
+    print(f"watch slot '{slot}': {', '.join(keywords)}", file=sys.stderr)
+
+    all_changes = []
+    for route_config in config["routes"]:
+        settings = {**defaults, **route_config}
+        try:
+            routes = build_route(client, waypoints=[home, route_config["to"]], want_all=True)
+        except (ValueError, RuntimeError, HttpError) as exc:
+            print(f"warning: route {route_config['name']} failed: {exc}", file=sys.stderr)
+            continue
+        for keyword in keywords:
+            filters = SearchFilters(
+                query=keyword, category_id=settings.get("category_id"),
+                min_price=settings.get("min_price"), max_price=settings.get("max_price"),
+                ad_type="angebote",
+            )
+            try:
+                result = search_route(
+                    client, resolver, filters, routes,
+                    corridor_km=settings.get("corridor_km", 20),
+                    max_pages=settings.get("pages", 1),
+                    budget=settings.get("budget"),
+                )
+            except (RuntimeError, HttpError) as exc:
+                print(f"warning: {route_config['name']}/{keyword} failed: {exc}", file=sys.stderr)
+                continue
+            complete = all(area.complete for area in result.coverage)
+            changes = store.diff(f"{route_config['name']} · {keyword}", result.listings, complete)
+            all_changes.append(changes)
+            print(f"  {changes.key}: {len(result.listings)} ads, "
+                  f"{len(changes.new)} new, {len(changes.drops)} drop(s)", file=sys.stderr)
+
+    digest = render_digest(all_changes)
+    if args.output:
+        args.output.write_text(digest, encoding="utf-8")
+        print(f"wrote {args.output}", file=sys.stderr)
+    else:
+        print(digest)
+    if not args.dry_run:
+        store.save()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="kleinanzeigen_search",
@@ -242,6 +303,14 @@ def build_parser() -> argparse.ArgumentParser:
     where.add_argument("place")
     add_common(where)
     where.set_defaults(func=cmd_where)
+
+    watch = subparsers.add_parser("watch", help="run configured routes on a schedule and report changes")
+    watch.add_argument("--config", required=True, help="watch config JSON (see watches.example.json)")
+    watch.add_argument("--slot", help="keyword slot to use (default: morning before noon, else evening)")
+    watch.add_argument("--dry-run", action="store_true", help="report changes without updating the state file")
+    watch.add_argument("-o", "--output", type=pathlib.Path, help="write the digest to a file")
+    add_common(watch)
+    watch.set_defaults(func=cmd_watch)
 
     categories = subparsers.add_parser("categories", help="list category ids")
     categories.add_argument("--for", dest="for_query", help="show the categories the site suggests for a search term")

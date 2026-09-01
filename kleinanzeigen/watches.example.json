@@ -1,0 +1,22 @@
+{
+  "_comment": "Twice-daily guitar watch around Pfaffenhofen a.d. Ilm. Anchored on the postcode, not a street address - house-level precision changes the detour by seconds and this file is public.",
+  "home": "85276 Pfaffenhofen a.d. Ilm",
+  "state_file": "~/.local/state/kleinanzeigen_search/watches.json",
+  "defaults": {
+    "category_id": 74,
+    "min_price": 100,
+    "max_price": 900,
+    "corridor_km": 20,
+    "pages": 1,
+    "budget": 45
+  },
+  "slots": {
+    "morning": ["Konzertgitarre", "Westerngitarre"],
+    "evening": ["Akustikgitarre", "Klassikgitarre"]
+  },
+  "routes": [
+    { "name": "schrobenhausen", "to": "Schrobenhausen, Bayern" },
+    { "name": "wolnzach",       "to": "Wolnzach, Bayern" },
+    { "name": "muenchen-laim",  "to": "Laim, München", "corridor_km": 12, "budget": 60 }
+  ]
+}

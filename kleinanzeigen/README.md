@@ -145,6 +145,45 @@ before paging starts. The same route with `--min-price 150 --max-price 600 --pag
 reached **complete coverage of all five areas in 23 requests**, returning 318 ads in that price
 band - fewer requests than the unfiltered shallow run, and nothing left unseen.
 
+## Watching a route on a schedule
+
+Ads on this market do not vanish quickly - the median listing has been online about a
+month and plenty sit for over a year - so "it disappeared" is a weak signal. What moves is
+**price**. A watch runs the same searches twice a day and reports only what changed: ads never
+seen before, ads whose price fell, and ads that vanished from an area that was **fully covered**
+(a partially paged area never claims an ad is gone - it may simply not have been reached).
+
+```bash
+cp watches.example.json watches.json     # edit routes, keywords, price band
+python3 -m kleinanzeigen_search watch --config watches.json --slot morning
+```
+
+The config lists a home anchor, a keyword slot per run, and the routes to sweep:
+
+```json
+{
+  "home": "85276 Pfaffenhofen a.d. Ilm",
+  "slots": { "morning": ["Konzertgitarre", "Westerngitarre"],
+             "evening": ["Akustikgitarre", "Klassikgitarre"] },
+  "routes": [ { "name": "wolnzach", "to": "Wolnzach, Bayern" } ]
+}
+```
+
+Anchor on a town or postcode rather than a street address - house-level precision changes the
+detour by seconds, and this file usually ends up in version control. With `--slot` omitted the
+run picks `morning` before noon and `evening` after, so the same command works in both cron
+entries. State lives in `state_file` (default `~/.local/state/kleinanzeigen_search/watches.json`);
+`--dry-run` reports without recording, which is how you test a config change.
+
+Twice a day, 8:00 and 18:00:
+
+```cron
+0 8  * * * cd /path/to/kleinanzeigen && python3 -m kleinanzeigen_search watch --config watches.json >> ~/guitar-watch.log 2>&1
+0 18 * * * cd /path/to/kleinanzeigen && python3 -m kleinanzeigen_search watch --config watches.json >> ~/guitar-watch.log 2>&1
+```
+
+A quiet run prints one line, so an empty digest costs nothing to read.
+
 ## Output formats
 
 | `--format` | What you get |
@@ -222,7 +261,7 @@ Responses are cached under `~/.cache/kleinanzeigen_search` for 15 minutes so rep
 
 ```bash
 cd kleinanzeigen
-python3 -m unittest discover -s tests -t .   # 170 tests, no network access
+python3 -m unittest discover -s tests -t .   # 198 tests, no network access
 ```
 
 The HTML fixture is a trimmed real result page, so parsing regressions surface immediately.
@@ -241,4 +280,5 @@ kleinanzeigen_search/
   search.py      city search and route search
   deals.py       price statistics and deal scoring
   report.py      table / details / json / csv / Leaflet map
+  watch.py       scheduled watches: snapshot, diff, digest
 ```
