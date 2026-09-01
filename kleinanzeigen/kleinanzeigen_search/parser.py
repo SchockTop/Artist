@@ -163,7 +163,92 @@ def _absolute(href: str) -> str:
 
 
 # ------------------------------------------------------------------- listings
+PLZ_SPAN_RE = re.compile(r"^(\d{5})\s+(.+)$")
+DATE_TEXT_RE = re.compile(r"^(Heute|Gestern)[,.]|^\d{1,2}\.\d{1,2}\.\d{4}")
+PRICE_TEXT_RE = re.compile(r"(\d[\d.]*\s*€|Zu verschenken|VB\b)", re.IGNORECASE)
+TOP_AD_RE = re.compile(r'"id":\[0,(\d+)\].{0,400}?"topAd":\[0,(true|false)\]', re.S)
+
+
+def _top_ad_flags(markup: str) -> dict[str, bool]:
+    """Sponsored flags from the redesign's embedded props JSON.
+
+    The new cards carry no CSS marker for a TOP ad; the only signal left is the
+    hydration payload, so read it there and default to "not sponsored". The
+    payload lives inside an HTML attribute, so its quotes arrive escaped -
+    matching the raw markup would silently find nothing.
+    """
+    return {m.group(1): m.group(2) == "true" for m in TOP_AD_RE.finditer(html.unescape(markup))}
+
+
+def parse_listings_modern(markup: str) -> list[Listing]:
+    """Parse the 2026 result-page layout (Tailwind classes, <article data-adid>).
+
+    Class names in that design are generated and change without warning, so
+    every field is found by structure - the article's own attributes, the
+    heading link, and the shape of the text - never by class name.
+    """
+    listings: list[Listing] = []
+    sponsored_flags = _top_ad_flags(markup)
+
+    for chunk in markup.split("<article ")[1:]:
+        block = chunk.split("</article>", 1)[0]
+        ad_id = re.search(r'data-adid="(\d+)"', block)
+        if not ad_id:
+            continue
+        ad_id = ad_id.group(1)
+
+        href = re.search(r'data-href="([^"]+)"', block)
+        title_match = re.search(r"<h3[^>]*>.*?<a[^>]*>(.*?)</a>", block, re.S)
+        title = html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", title_match.group(1))).strip()) if title_match else ""
+
+        spans = [
+            html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", raw)).strip())
+            for raw in re.findall(r"<span[^>]*>(.*?)</span>", block, re.S)
+        ]
+        plz = ort = posted_raw = None
+        for text in spans:
+            place = PLZ_SPAN_RE.match(text)
+            if place and plz is None:
+                plz, ort = place.group(1), place.group(2)
+            elif DATE_TEXT_RE.match(text) and posted_raw is None:
+                posted_raw = text
+
+        paragraphs = [
+            html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", raw)).strip())
+            for raw in re.findall(r"<p[^>]*>(.*?)</p>", block, re.S)
+        ]
+        price_text = next((t for t in paragraphs if t and PRICE_TEXT_RE.search(t) and len(t) < 30), "")
+        description = next((t for t in paragraphs if t and t != price_text and len(t) > 20), "")
+        price_eur, price_type = parse_price(price_text)
+
+        image = re.search(r'<img[^>]+src="([^"]+)"', block)
+        if plz is None and ort is None:
+            location_alt = re.search(r'alt="[^"]*?([A-ZÄÖÜ][\wäöüß.\- ]+) Vorschau"', block)
+            ort = location_alt.group(1).strip() if location_alt else None
+
+        listings.append(
+            Listing(
+                ad_id=ad_id,
+                title=title,
+                url=_absolute(href.group(1) if href else ""),
+                price_eur=price_eur,
+                price_type=price_type,
+                description=description,
+                plz=plz,
+                ort=ort,
+                posted_raw=posted_raw,
+                posted_at=parse_posted(posted_raw or ""),
+                image_url=image.group(1) if image else None,
+                sponsored=sponsored_flags.get(ad_id, False),
+            )
+        )
+    return listings
+
+
 def parse_listings(markup: str) -> list[Listing]:
+    """Parse a result page, whichever layout the site is currently serving."""
+    if 'class="aditem"' not in markup:
+        return parse_listings_modern(markup)
     root = parse_dom(markup)
     listings: list[Listing] = []
     for article in root.find_all("article", "aditem"):
@@ -227,15 +312,25 @@ SUMMARY_RE = re.compile(r"von\s+([\d.]+)\s+\S")
 NO_RESULTS_RE = re.compile(r"keine\s+Ergebnisse", re.IGNORECASE)
 
 
+# The 2026 redesign dropped the breadcrump-summary element but kept the
+# wording, so fall back to the bare "1 - 25 von 62 ..." phrase anywhere.
+RANGE_TOTAL_RE = re.compile(r"\d+\s*-\s*\d+\s+von\s+([\d.]+)\s")
+
+
 def parse_result_total(markup: str) -> int | None:
     """Total hits reported by the site ('1 - 25 von 39.183 Ergebnissen')."""
     match = re.search(r'class="breadcrump-summary"[^>]*>(.*?)</span>', markup, re.S)
-    if not match:
-        return None
-    text = re.sub(r"<[^>]+>", "", match.group(1))
+    if match:
+        text = re.sub(r"<[^>]+>", "", match.group(1))
+        if NO_RESULTS_RE.search(text):
+            return 0
+        hit = SUMMARY_RE.search(text)
+        if hit:
+            return int(hit.group(1).replace(".", ""))
+    text = html.unescape(re.sub(r"<[^>]+>", " ", markup))
     if NO_RESULTS_RE.search(text):
         return 0
-    hit = SUMMARY_RE.search(text)
+    hit = RANGE_TOTAL_RE.search(text)
     return int(hit.group(1).replace(".", "")) if hit else None
 
 

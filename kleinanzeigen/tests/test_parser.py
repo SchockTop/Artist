@@ -134,3 +134,57 @@ class DomTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+MODERN = """<html><body>
+<div>1 - 25 von 62 Musikinstrumente f&uuml;r &#8222;gitarre&#8220; in 85276 Pfaffenhofen</div>
+<ul id="srchrslt-adtable">
+<li data-clickable="card" class="relative mb-xsmall">
+  <article class="flex justify-between p-medium" data-adid="3500000001"
+           data-href="/s-anzeige/testgitarre/3500000001-74-7191">
+    <div><img class="size-full" src="https://img.invalid/a.jpg" alt="Testgitarre Bayern - Wolnzach Vorschau"></div>
+    <div><div><div><span>85283 Wolnzach</span><span class="ml-xsmall">(ca. 12 km)</span></div>
+    <div><span>Heute, 09:18</span></div></div>
+    <div class="flex flex-col">
+      <h3 class="text-base"><a class="x" href="/s-anzeige/testgitarre/3500000001-74-7191">Yamaha Testgitarre 4/4</a></h3>
+      <p class="text-sm">Eine sehr sch&ouml;ne Gitarre mit Tasche und Zubeh&ouml;r zu verkaufen...</p>
+      <div class="flex"><p class="text-base">250 &euro; VB</p></div>
+    </div></div>
+  </article>
+</li>
+</ul>
+<script>props="{&quot;id&quot;:[0,3500000001],&quot;x&quot;:[0,1],&quot;topAd&quot;:[0,true]}"</script>
+</body></html>"""
+
+
+class ModernLayoutTest(unittest.TestCase):
+    """The 2026 redesign: Tailwind classes, <article data-adid>, no .aditem."""
+
+    def setUp(self):
+        [self.listing] = parser.parse_listings(MODERN)
+
+    def test_identity_and_link(self):
+        self.assertEqual(self.listing.ad_id, "3500000001")
+        self.assertEqual(self.listing.url,
+                         "https://www.kleinanzeigen.de/s-anzeige/testgitarre/3500000001-74-7191")
+
+    def test_title_and_description(self):
+        self.assertEqual(self.listing.title, "Yamaha Testgitarre 4/4")
+        self.assertIn("schöne Gitarre", self.listing.description)
+
+    def test_price(self):
+        self.assertEqual((self.listing.price_eur, self.listing.price_type), (250, "vb"))
+
+    def test_location_and_date(self):
+        self.assertEqual((self.listing.plz, self.listing.ort), ("85283", "Wolnzach"))
+        self.assertEqual(self.listing.posted_raw, "Heute, 09:18")
+        self.assertIsNotNone(self.listing.posted_at)
+
+    def test_sponsored_flag_from_the_props_payload(self):
+        self.assertTrue(self.listing.sponsored)
+
+    def test_result_total_without_breadcrump(self):
+        self.assertEqual(parser.parse_result_total(MODERN), 62)
+
+    def test_old_layout_still_parsed(self):
+        self.assertEqual(len(parser.parse_listings(MARKUP)), 4)
