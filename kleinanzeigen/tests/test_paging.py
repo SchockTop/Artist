@@ -214,3 +214,22 @@ class AlternativeRoutesTest(unittest.TestCase):
                                    SearchFilters(query="Gitarre", ad_type=None),
                                    [self.main, self.alt], corridor_km=20, max_pages=1)
         self.assertIs(result.route, self.main)
+
+
+class LayoutChangeGuardTest(unittest.TestCase):
+    """An unparseable page must fail loudly, not look like an empty search."""
+
+    def test_page_with_ads_that_parses_to_nothing_raises(self):
+        from kleinanzeigen_search.client import HttpError
+        from tests.fakes import FakeClient
+        # Ad markers present, but in markup no parser understands.
+        client = FakeClient(markup='<html><body><div data-adid="123">???</div></body></html>')
+        with self.assertRaises(HttpError):
+            fetch_next_page(client, area(1, "a"))
+
+    def test_genuinely_empty_page_is_fine(self):
+        from tests.fakes import FakeClient
+        client = FakeClient(markup='<html><body><p>Es wurden keine Ergebnisse gefunden.</p></body></html>')
+        a = area(1, "a")
+        self.assertEqual(fetch_next_page(client, a), 0)
+        self.assertTrue(a.exhausted)

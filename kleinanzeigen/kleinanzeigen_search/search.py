@@ -141,6 +141,13 @@ def fetch_next_page(client: HttpClient, area: AreaSearch, include_sponsored: boo
         area.reported = parser.parse_result_total(markup)
 
     listings = parser.parse_listings(markup)
+    if not listings and parser.looks_like_results_page(markup):
+        # The page clearly holds ads but nothing parsed: the site has changed
+        # its markup again. Say so loudly - an unattended run would otherwise
+        # record "0 ads, full coverage" and look like a quiet day.
+        log.error("parsed 0 ads from a page that contains ad markers - the site layout "
+                  "has probably changed: %s", url)
+        raise HttpError(url, None, "result page could not be parsed (site layout changed?)")
     organic = [l for l in listings if not l.sponsored]
     added = 0
     for listing in listings:

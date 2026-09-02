@@ -245,6 +245,16 @@ def parse_listings_modern(markup: str) -> list[Listing]:
     return listings
 
 
+def looks_like_results_page(markup: str) -> bool:
+    """True when the markup plainly contains ads, whatever the layout.
+
+    Used to tell "this search genuinely found nothing" apart from "the parser
+    no longer understands the page" - the second one must never be reported as
+    an empty result.
+    """
+    return "data-adid" in markup
+
+
 def parse_listings(markup: str) -> list[Listing]:
     """Parse a result page, whichever layout the site is currently serving."""
     if 'class="aditem"' not in markup:
