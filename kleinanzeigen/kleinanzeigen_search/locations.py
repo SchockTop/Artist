@@ -234,16 +234,29 @@ class LocationResolver:
         return None
 
 
-def geocode(client: HttpClient, query: str, country: str = "de") -> geo.Point | None:
-    """Free-form place -> coordinates via OpenStreetMap Nominatim."""
-    params = urllib.parse.urlencode(
-        {"q": query, "format": "jsonv2", "limit": 1, "countrycodes": country, "addressdetails": 0}
-    )
-    try:
-        payload = client.get_json(NOMINATIM_URL.format(params=params))
-    except Exception as exc:  # noqa: BLE001
-        log.warning("geocoding failed for %r: %s", query, exc)
-        return None
-    if not payload:
-        return None
-    return (float(payload[0]["lat"]), float(payload[0]["lon"]))
+def geocode(client: HttpClient, query: str, country: str | None = "de") -> geo.Point | None:
+    """Free-form place -> coordinates via OpenStreetMap Nominatim.
+
+    Biased to ``country`` first so that bare town names resolve to the German
+    one, then retried worldwide. A trip can perfectly well start in Strasbourg
+    or Salzburg even though the ads themselves are only ever German.
+    """
+    attempts: list[dict] = []
+    if country:
+        attempts.append({"countrycodes": country})
+    attempts.append({})
+
+    for extra in attempts:
+        params = urllib.parse.urlencode(
+            {"q": query, "format": "jsonv2", "limit": 1, "addressdetails": 0, **extra}
+        )
+        try:
+            payload = client.get_json(NOMINATIM_URL.format(params=params))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("geocoding failed for %r: %s", query, exc)
+            return None
+        if payload:
+            if not extra:
+                log.info("geocoded %r outside %s", query, country)
+            return (float(payload[0]["lat"]), float(payload[0]["lon"]))
+    return None

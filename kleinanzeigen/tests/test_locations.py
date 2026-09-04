@@ -95,3 +95,47 @@ class PickTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GeocodeFallbackTest(unittest.TestCase):
+    """A route may start abroad even though the ads are German-only."""
+
+    class FakeGeoClient:
+        """Answers only for queries without a country restriction."""
+
+        def __init__(self, german_hits=()):
+            self.german_hits = set(german_hits)
+            self.queries = []
+
+        def get_json(self, url, use_cache=True):
+            import urllib.parse
+            params = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+            self.queries.append(params)
+            restricted = "countrycodes" in params
+            place = params["q"][0]
+            if restricted and place not in self.german_hits:
+                return []
+            return [{"lat": "48.5734", "lon": "7.7521"}]
+
+    def test_german_place_resolves_on_the_first_try(self):
+        from kleinanzeigen_search.locations import geocode
+        client = self.FakeGeoClient(german_hits={"Freiburg"})
+        self.assertIsNotNone(geocode(client, "Freiburg"))
+        self.assertEqual(len(client.queries), 1)
+
+    def test_foreign_place_falls_back_to_a_worldwide_lookup(self):
+        from kleinanzeigen_search.locations import geocode
+        client = self.FakeGeoClient(german_hits=set())
+        point = geocode(client, "Strasbourg, France")
+        self.assertIsNotNone(point)
+        self.assertEqual(len(client.queries), 2)
+        self.assertNotIn("countrycodes", client.queries[1])
+
+    def test_unknown_place_still_returns_none(self):
+        from kleinanzeigen_search.locations import geocode
+
+        class Empty:
+            def get_json(self, url, use_cache=True):
+                return []
+
+        self.assertIsNone(geocode(Empty(), "Nirgendwo XYZ"))
