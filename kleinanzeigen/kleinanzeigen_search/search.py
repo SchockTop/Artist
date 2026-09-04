@@ -27,11 +27,14 @@ class AreaCoverage:
     fetched: int
     reported: int | None
     exhausted: bool = False
+    failed: bool = False
 
     @property
     def complete(self) -> bool:
+        if self.failed:
+            return False  # stopped by an error, not by running out of ads
         if self.exhausted:
-            return True  # paged until the site ran out, whatever it claimed
+            return True   # paged until the site ran out, whatever it claimed
         return self.reported is not None and self.fetched >= self.reported
 
 
@@ -106,6 +109,7 @@ class AreaSearch:
     reported: int | None = None
     pages: int = 0
     exhausted: bool = False
+    failed: bool = False
 
     @property
     def deficit(self) -> int:
@@ -126,7 +130,7 @@ class AreaSearch:
 
     @property
     def coverage(self) -> AreaCoverage:
-        return AreaCoverage(self.label, len(self.listings), self.reported, self.exhausted)
+        return AreaCoverage(self.label, len(self.listings), self.reported, self.exhausted, self.failed)
 
 
 def fetch_next_page(client: HttpClient, area: AreaSearch, include_sponsored: bool = False) -> int:
@@ -200,6 +204,7 @@ def run_areas(
         except HttpError as exc:
             warnings.append(f"search in {area.label} stopped: {exc}")
             area.exhausted = True
+            area.failed = True
         budget.spent += 1
         return True
 

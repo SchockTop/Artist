@@ -233,3 +233,30 @@ class LayoutChangeGuardTest(unittest.TestCase):
         a = area(1, "a")
         self.assertEqual(fetch_next_page(client, a), 0)
         self.assertTrue(a.exhausted)
+
+
+class FailedAreaCoverageTest(unittest.TestCase):
+    """An area killed by an error is not 'fully covered'."""
+
+    def test_error_marks_the_area_incomplete(self):
+        from kleinanzeigen_search.client import HttpError
+        from kleinanzeigen_search.search import AreaCoverage
+
+        class Failing:
+            request_count = 0
+            user_agent = "x"
+
+            def get(self, url, **kw):
+                raise HttpError(url, 403, "Forbidden")
+
+        a = area(1, "Kehl")
+        warnings: list[str] = []
+        run_areas(Failing(), [a], initial_pages=1, warnings=warnings)
+        self.assertTrue(a.failed)
+        self.assertFalse(a.coverage.complete)
+        self.assertTrue(any("stopped" in w for w in warnings))
+
+    def test_a_naturally_exhausted_area_is_still_complete(self):
+        from kleinanzeigen_search.search import AreaCoverage
+        self.assertTrue(AreaCoverage("x", 10, 10, exhausted=True).complete)
+        self.assertFalse(AreaCoverage("x", 10, 10, exhausted=True, failed=True).complete)
