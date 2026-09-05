@@ -99,3 +99,49 @@ class DigestTest(unittest.TestCase):
     def test_partial_coverage_is_flagged(self):
         changes = Changes(key="r", new=[ad("1", 200)], coverage_complete=False)
         self.assertIn("not fully covered", render_digest([changes]))
+
+
+class RepostTest(unittest.TestCase):
+    """A deleted-and-relisted ad is neither a sale nor a new arrival."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = WatchStore(pathlib.Path(self.tmp.name) / "s.json")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_relist_is_not_counted_as_gone_and_new(self):
+        self.store.diff("r", [ad("1", 159, "Pro Arte GC-210 M Konzertgitarre", plz="80687")], now="2026-09-01")
+        changes = self.store.diff("r", [ad("2", 149, "Pro Arte GC-210 M Konzertgitarre", plz="80687")], now="2026-09-05")
+        self.assertEqual(changes.gone, [])
+        self.assertEqual(changes.new, [])
+        [repost] = changes.reposts
+        self.assertEqual((repost.was, repost.listing.price_eur), (159, 149))
+        self.assertEqual(repost.first_seen, "2026-09-01")
+
+    def test_true_age_survives_the_relist(self):
+        self.store.diff("r", [ad("1", 159, "Yamaha CG101MS Konzertgitarre", plz="85049")], now="2026-08-01")
+        self.store.diff("r", [ad("2", 149, "Yamaha CG101MS Konzertgitarre", plz="85049")], now="2026-09-05")
+        self.assertEqual(self.store.known("r")["2"].first_seen, "2026-08-01")
+
+    def test_a_different_guitar_is_still_new(self):
+        self.store.diff("r", [ad("1", 159, "Pro Arte GC-210 M", plz="80687")], now="2026-09-01")
+        changes = self.store.diff("r", [ad("2", 149, "Seagull S6 Westerngitarre", plz="80687")], now="2026-09-05")
+        self.assertEqual(len(changes.new), 1)
+        self.assertEqual(len(changes.gone), 1)
+        self.assertEqual(changes.reposts, [])
+
+    def test_same_title_in_another_town_is_not_a_relist(self):
+        self.store.diff("r", [ad("1", 159, "Ortega R121 Konzertgitarre", plz="80687")], now="2026-09-01")
+        changes = self.store.diff("r", [ad("2", 159, "Ortega R121 Konzertgitarre", plz="90402")], now="2026-09-05")
+        self.assertEqual(changes.reposts, [])
+        self.assertEqual(len(changes.new), 1)
+
+    def test_digest_shows_relists_separately(self):
+        self.store.diff("r", [ad("1", 159, "Pro Arte GC-210 M", plz="80687")], now="2026-09-01")
+        changes = self.store.diff("r", [ad("2", 149, "Pro Arte GC-210 M", plz="80687")], now="2026-09-05")
+        text = render_digest([changes])
+        self.assertIn("1 relisted", text)
+        self.assertIn("159 → 149 €", text)
+        self.assertIn("unsold since 2026-09-01", text)

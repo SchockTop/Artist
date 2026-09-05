@@ -13,6 +13,7 @@ import json
 import pathlib
 from dataclasses import asdict, dataclass, field
 
+from .deals import similarity, tokenize
 from .models import Listing
 
 
@@ -49,17 +50,40 @@ class PriceDrop:
 
 
 @dataclass
+class Repost:
+    """The same guitar, deleted and listed again under a fresh ad id.
+
+    Sellers do this to jump back to the top of the newest-first list, usually
+    while trimming the price. Counting it as a sale plus a new arrival would
+    be wrong twice over, and would hide the fact that the thing has actually
+    been sitting unsold since ``first_seen``.
+    """
+
+    listing: Listing
+    previous: Seen
+
+    @property
+    def was(self) -> int | None:
+        return self.previous.price_eur
+
+    @property
+    def first_seen(self) -> str:
+        return self.previous.first_seen
+
+
+@dataclass
 class Changes:
     key: str
     new: list[Listing] = field(default_factory=list)
     drops: list[PriceDrop] = field(default_factory=list)
     gone: list[Seen] = field(default_factory=list)
+    reposts: list[Repost] = field(default_factory=list)
     unchanged: int = 0
     coverage_complete: bool = True
 
     @property
     def quiet(self) -> bool:
-        return not (self.new or self.drops or self.gone)
+        return not (self.new or self.drops or self.gone or self.reposts)
 
 
 class WatchStore:
@@ -121,6 +145,7 @@ class WatchStore:
             for ad_id, before in known.items():
                 if ad_id not in seen_now and before.last_seen != now:
                     changes.gone.append(before)
+            _match_reposts(changes, known, now)
 
         self.data[key] = {ad_id: asdict(row) for ad_id, row in known.items()
                           if ad_id in seen_now or row.last_seen == now
@@ -134,7 +159,11 @@ def render_digest(all_changes: list[Changes], limit: int = 12) -> str:
     total_new = sum(len(c.new) for c in all_changes)
     total_drops = sum(len(c.drops) for c in all_changes)
     total_gone = sum(len(c.gone) for c in all_changes)
-    lines.append(f"{total_new} new · {total_drops} price drop(s) · {total_gone} vanished")
+    total_reposts = sum(len(c.reposts) for c in all_changes)
+    headline = f"{total_new} new · {total_drops} price drop(s) · {total_gone} vanished"
+    if total_reposts:
+        headline += f" · {total_reposts} relisted"
+    lines.append(headline)
 
     for changes in all_changes:
         if changes.quiet:
@@ -151,8 +180,48 @@ def render_digest(all_changes: list[Changes], limit: int = 12) -> str:
             score = f" · score {listing.deal_score:.0f}" if listing.deal_score is not None else ""
             lines.append(f"   + {listing.price_label:>10}{detour}{score}  {listing.title[:52]}")
             lines.append(f"     {listing.url}")
+        for repost in changes.reposts[:limit]:
+            price = ""
+            if repost.was is not None and repost.listing.price_eur is not None:
+                price = (f" {repost.was} → {repost.listing.price_eur} €"
+                         if repost.was != repost.listing.price_eur else f" still {repost.was} €")
+            lines.append(f"   ↻ relisted{price} · unsold since {repost.first_seen}"
+                         f"  {repost.listing.title[:52]}")
+            lines.append(f"     {repost.listing.url}")
         for row in changes.gone[:limit]:
             lines.append(f"   × gone: {row.title[:52]} (last {row.price_eur} €, first seen {row.first_seen})")
         if not changes.coverage_complete:
             lines.append("   (area not fully covered this run - 'gone' not checked)")
     return "\n".join(lines)
+
+
+def _match_reposts(changes: Changes, known: dict[str, Seen], now: str, min_similarity: float = 0.8) -> None:
+    """Pair vanished ads with new ones that are plainly the same guitar.
+
+    Matched on the same postcode and a near-identical title. The new entry
+    inherits the original ``first_seen``, so a relisted ad cannot disguise how
+    long it has really been on the market.
+    """
+    if not (changes.gone and changes.new):
+        return
+    still_gone, still_new, reposts = [], list(changes.new), []
+
+    for before in changes.gone:
+        before_tokens = tokenize(before.title)
+        match = None
+        for listing in still_new:
+            if before.plz and listing.plz and before.plz != listing.plz:
+                continue
+            if similarity(before_tokens, tokenize(listing.title)) >= min_similarity:
+                match = listing
+                break
+        if match is None:
+            still_gone.append(before)
+            continue
+        still_new.remove(match)
+        reposts.append(Repost(match, before))
+        if match.ad_id in known:                    # carry the true age across
+            known[match.ad_id].first_seen = before.first_seen
+        known.pop(before.ad_id, None)
+
+    changes.gone, changes.new, changes.reposts = still_gone, still_new, reposts
