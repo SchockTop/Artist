@@ -188,3 +188,26 @@ class ModernLayoutTest(unittest.TestCase):
 
     def test_old_layout_still_parsed(self):
         self.assertEqual(len(parser.parse_listings(MARKUP)), 4)
+
+
+class GalleryTest(unittest.TestCase):
+    def test_stops_at_recommended_ads(self):
+        """Photos below 'auch interessieren' belong to other people's ads."""
+        markup = (
+            '<div data-imgsrc="https://img.example/a?rule=$_59.AUTO">'
+            '<div data-imgsrc="https://img.example/b?rule=$_59.AUTO">'
+            '<div data-imgsrc="https://img.example/a?rule=$_57.AUTO">'
+            "<h2>Das k\u00f6nnte dich auch interessieren</h2>"
+            '<div data-imgsrc="https://img.example/stranger?rule=$_2.AUTO">'
+        )
+        self.assertEqual(
+            parser.parse_gallery_images(markup),
+            ["https://img.example/a", "https://img.example/b"],
+        )
+
+    def test_page_without_recommendations(self):
+        markup = '<div data-imgsrc="https://img.example/only?rule=$_59.AUTO">'
+        self.assertEqual(parser.parse_gallery_images(markup), ["https://img.example/only"])
+
+    def test_page_without_photos(self):
+        self.assertEqual(parser.parse_gallery_images("<p>kein Bild</p>"), [])

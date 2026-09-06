@@ -361,3 +361,28 @@ def parse_category_index(markup: str) -> list[tuple[int, str]]:
         label = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", match.group(3))).strip()
         out.setdefault(int(match.group(2)), html.unescape(label) or match.group(1))
     return sorted(out.items())
+
+
+# An ad page carries the seller's own photos and then, further down, thumbnails
+# of other people's ads under "Das könnte dich auch interessieren".  Both are
+# served from the same image host, so a naive sweep of the markup mixes a
+# stranger's guitar into the gallery and invites the wrong verdict about what
+# is actually for sale.  Cut the page at that heading first.
+RECOMMENDATION_RE = re.compile(r"auch interessieren", re.IGNORECASE)
+GALLERY_IMAGE_RE = re.compile(r'data-imgsrc="([^"]+)"')
+
+
+def parse_gallery_images(markup: str) -> list[str]:
+    """The seller's own photos on an ad page, in order, without duplicates.
+
+    Each photo appears once per resolution, so the query string is dropped and
+    the first sighting wins.
+    """
+    stop = RECOMMENDATION_RE.search(markup)
+    own = markup[: stop.start()] if stop else markup
+    out: list[str] = []
+    for match in GALLERY_IMAGE_RE.finditer(own):
+        url = html.unescape(match.group(1)).split("?")[0]
+        if url not in out:
+            out.append(url)
+    return out
