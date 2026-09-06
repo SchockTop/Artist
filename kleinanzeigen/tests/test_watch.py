@@ -84,6 +84,19 @@ class DiffTest(unittest.TestCase):
         self.assertEqual(self.store.diff("r", [ad("1", 200)], now="2026-09-02").drops, [])
 
 
+    def test_gone_is_reported_on_a_second_run_the_same_day(self):
+        """The evening slot has to catch an ad that sold during the day."""
+        self.store.diff("r", [ad("1", 200), ad("2", 300)], now="2026-09-06")
+        changes = self.store.diff("r", [ad("1", 200)], now="2026-09-06")
+        self.assertEqual([g.ad_id for g in changes.gone], ["2"])
+
+    def test_a_vanished_ad_is_reported_once(self):
+        self.store.diff("r", [ad("1", 200), ad("2", 300)], now="2026-09-06")
+        self.store.diff("r", [ad("1", 200)], now="2026-09-06")
+        again = self.store.diff("r", [ad("1", 200)], now="2026-09-07")
+        self.assertEqual(again.gone, [])
+
+
 class DigestTest(unittest.TestCase):
     def test_digest_leads_with_the_counts(self):
         changes = Changes(key="wolnzach · Konzertgitarre", new=[ad("1", 200, detour_min=6.0)])

@@ -142,13 +142,18 @@ class WatchStore:
                 before.lowest_price = min(before.lowest_price or listing.price_eur, listing.price_eur)
 
         if coverage_complete:
+            # An ad this watch knows about that a fully covered run did not
+            # return is gone from the result set, whether or not an earlier run
+            # today happened to see it.  Dating that check instead of tying it
+            # to the run made the second slot of the day blind to same-day
+            # sales - which is precisely when a city listing disappears.
             for ad_id, before in known.items():
-                if ad_id not in seen_now and before.last_seen != now:
+                if ad_id not in seen_now:
                     changes.gone.append(before)
             _match_reposts(changes, known, now)
 
         self.data[key] = {ad_id: asdict(row) for ad_id, row in known.items()
-                          if ad_id in seen_now or row.last_seen == now
+                          if ad_id in seen_now
                           or ad_id not in {g.ad_id for g in changes.gone}}
         return changes
 
