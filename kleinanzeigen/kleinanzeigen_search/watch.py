@@ -165,9 +165,16 @@ def render_digest(all_changes: list[Changes], limit: int = 12) -> str:
     total_drops = sum(len(c.drops) for c in all_changes)
     total_gone = sum(len(c.gone) for c in all_changes)
     total_reposts = sum(len(c.reposts) for c in all_changes)
+    # An area the run could not finish never had its "gone" list computed, so
+    # the vanished count is a floor, not a total.  Say so in the headline:
+    # a quiet area is skipped below, and without this an unchecked one would
+    # leave the digest reading like a clean bill of health.
+    partial = [c.key for c in all_changes if not c.coverage_complete]
     headline = f"{total_new} new · {total_drops} price drop(s) · {total_gone} vanished"
     if total_reposts:
         headline += f" · {total_reposts} relisted"
+    if partial:
+        headline += f" · {len(partial)} area(s) not fully covered"
     lines.append(headline)
 
     for changes in all_changes:
@@ -197,6 +204,13 @@ def render_digest(all_changes: list[Changes], limit: int = 12) -> str:
             lines.append(f"   × gone: {row.title[:52]} (last {row.price_eur} €, first seen {row.first_seen})")
         if not changes.coverage_complete:
             lines.append("   (area not fully covered this run - 'gone' not checked)")
+
+    quiet_partial = [c.key for c in all_changes if c.quiet and not c.coverage_complete]
+    if quiet_partial:
+        lines.append("")
+        lines.append("not fully covered this run, so nothing there was checked for sale:")
+        for key in quiet_partial:
+            lines.append(f"   ? {key}")
     return "\n".join(lines)
 
 

@@ -114,6 +114,18 @@ class DigestTest(unittest.TestCase):
         self.assertIn("not fully covered", render_digest([changes]))
 
 
+    def test_partly_covered_areas_are_named_even_when_otherwise_quiet(self):
+        """A skipped area must not read as a clean bill of health."""
+        quiet = Changes(key="muc · Konzertgitarre", coverage_complete=False)
+        digest = render_digest([quiet])
+        self.assertIn("1 area(s) not fully covered", digest)
+        self.assertIn("muc · Konzertgitarre", digest)
+
+    def test_fully_covered_quiet_run_says_nothing_extra(self):
+        digest = render_digest([Changes(key="muc · Konzertgitarre")])
+        self.assertNotIn("not fully covered", digest)
+
+
 class RepostTest(unittest.TestCase):
     """A deleted-and-relisted ad is neither a sale nor a new arrival."""
 
