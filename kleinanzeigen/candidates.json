@@ -1,0 +1,345 @@
+{
+ "_comment": "Guitars picked out by hand from the searches, kept between sessions. Re-check with: python3 -m kleinanzeigen_search shortlist candidates.json",
+ "candidates": [
+  {
+   "label": "Alhambra 5P",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/alhambra-5-p-konzertgitarre/3404947227-74-6375",
+   "asking_eur": 500,
+   "verdict": "BUY",
+   "first_seen": "2026-08-25"
+  },
+  {
+   "label": "Crafter STG D-18ce Pro",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/crafter-akustikgitarre-dreadnought-mit-pickup-und-mikro/3481178056-74-5826",
+   "asking_eur": 380,
+   "verdict": "BUY",
+   "first_seen": "2026-08-27"
+  },
+  {
+   "label": "Seagull S6 + case",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/seagull-westerngitarre/3453993877-74-16299",
+   "asking_eur": 310,
+   "verdict": "BUY",
+   "first_seen": "2026-08-30"
+  },
+  {
+   "label": "Cort Luce L450C",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/cort-luce-l450c-westerngitarre/3421981435-74-6204",
+   "asking_eur": 200,
+   "verdict": "BUY",
+   "first_seen": "2026-08-30"
+  },
+  {
+   "label": "Taylor 114e Walnut",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/taylor-114e-walnut-westerngitarre/3410433784-74-6204",
+   "asking_eur": 475,
+   "verdict": "BUY",
+   "first_seen": "2026-08-30"
+  },
+  {
+   "label": "Höfner HF16",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/hoefner-hf-16-konzertgitarre-baujahr-vor-2011/3415503958-74-6204",
+   "asking_eur": 275,
+   "verdict": "BUY",
+   "first_seen": "2026-08-30"
+  },
+  {
+   "label": "La Mancha Rubi CM",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/la-mancha-rubi-cm-konzertgitarre-top-zustand/3490227049-74-4571",
+   "asking_eur": 139,
+   "verdict": "BUY",
+   "first_seen": "2026-08-30",
+   "note": "was 149 €, cut 139 € on 2026-09-07"
+  },
+  {
+   "label": "Admira Málaga",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/spanische-gitarre-admira-mod-malaga/3281400345-74-7606",
+   "asking_eur": 199,
+   "verdict": "BUY",
+   "first_seen": "2026-08-25"
+  },
+  {
+   "label": "Walden G630CE",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/walden-g630ce-westerngitarre/3489326581-74-6824",
+   "asking_eur": 180,
+   "verdict": "BUY",
+   "first_seen": "2026-08-27"
+  },
+  {
+   "label": "Walden Madera CD4040",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/westerngitarre-walden-madera-cd4040/3472510887-74-6815",
+   "asking_eur": 400,
+   "verdict": "BUY",
+   "first_seen": "2026-08-27"
+  },
+  {
+   "label": "Esteve 6PS",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/esteve-6ps-konzertgitarre/3429531173-74-5834",
+   "asking_eur": 400,
+   "verdict": "BUY",
+   "first_seen": "2026-08-25"
+  },
+  {
+   "label": "Cort Earth 500",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/cort-earth-500-gitarre/3450782434-74-18754",
+   "asking_eur": 180,
+   "verdict": "BUY",
+   "first_seen": "2026-08-27",
+   "note": "was 190 €, cut 180 € on 2026-09-07"
+  },
+  {
+   "label": "La Mancha Rubi CM-N",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/la-mancha-rubi-cm-n-konzertgitarre-massivholz-decke-tontraeger/3472154875-74-18754",
+   "asking_eur": 200,
+   "verdict": "BUY",
+   "first_seen": "2026-08-25"
+  },
+  {
+   "label": "Ibanez Artwood AC240",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/gitarre-ibanez-artwood-ac240-opn/3482398912-74-6439",
+   "asking_eur": 200,
+   "verdict": "BUY",
+   "first_seen": "2026-09-04"
+  },
+  {
+   "label": "Camps Sonata",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/gitarre-camps-sonata-konzertgitarre-made-in-spain/3503696391-74-9299",
+   "asking_eur": 220,
+   "verdict": "BUY",
+   "first_seen": "2026-09-05"
+  },
+  {
+   "label": "Höfner Carmencita HC504",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/hoefner-carmencita-hc-504-4-4-konzertgitarre/3483615482-74-8979",
+   "asking_eur": 200,
+   "verdict": "BUY",
+   "first_seen": "2026-09-05"
+  },
+  {
+   "label": "Höfner HF12",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/hoefner-hf12-klassikgitarre-top-zustand-/3499090424-74-9297",
+   "asking_eur": 240,
+   "verdict": "BUY",
+   "first_seen": "2026-09-05"
+  },
+  {
+   "label": "Sigma STE",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/westerngitarre-sigma-ste/3503252570-74-8097",
+   "asking_eur": 250,
+   "verdict": "BUY",
+   "first_seen": "2026-09-05"
+  },
+  {
+   "label": "Armin Hanika 50 PC",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/gitarre-armin-hanika/3498855741-74-7596",
+   "asking_eur": 700,
+   "verdict": "CHECK",
+   "first_seen": "2026-08-31"
+  },
+  {
+   "label": "Hopf Meisterw. 1979",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/konzertgitarre-hopf-meisterwerkstaetten-bj-1979/3473259368-74-6422",
+   "asking_eur": 560,
+   "verdict": "CHECK",
+   "first_seen": "2026-09-04"
+  },
+  {
+   "label": "Helmut Hanika 1969",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/vintage-helmut-hanika-konzertgitarre-1969-meisterhandarbeit/3500623170-74-6534",
+   "asking_eur": 550,
+   "verdict": "CHECK",
+   "first_seen": "2026-08-31"
+  },
+  {
+   "label": "Simon & Patrick",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/gitarre-simon-patrick-mit-stahlsaiten/3463815775-74-8976",
+   "asking_eur": 800,
+   "verdict": "CHECK",
+   "first_seen": "2026-09-05"
+  },
+  {
+   "label": "Taylor GS Mini Mahog.",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/taylor-gs-mini-mahagoni-akustikgitarre/3478403184-74-6799",
+   "asking_eur": 465,
+   "verdict": "FAIR",
+   "first_seen": "2026-08-25"
+  },
+  {
+   "label": "Ibanez AW45-OPN",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/sehr-gepflegte-westerngitarre-ibanez-aw45-opn/3493932250-74-4293",
+   "asking_eur": 150,
+   "verdict": "FAIR",
+   "first_seen": "2026-08-30"
+  },
+  {
+   "label": "Alhambra 3F (flamenco)",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/alhambra-gitarre/3331394908-74-16301",
+   "asking_eur": 444,
+   "verdict": "FAIR",
+   "first_seen": "2026-08-30"
+  },
+  {
+   "label": "Framus 13220 Texan",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/framus-gitarre-13220-texan-serie/3377797029-74-7142",
+   "asking_eur": 300,
+   "verdict": "FAIR",
+   "first_seen": "2026-08-31"
+  },
+  {
+   "label": "Takamine EG-334C",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/takamine-gitarre-gserie-eg-334c/3377789614-74-7142",
+   "asking_eur": 400,
+   "verdict": "FAIR",
+   "first_seen": "2026-08-31"
+  },
+  {
+   "label": "Ibanez AW150CE + case",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/ibanez-aw150ce-opn-westerngitarre-hartkoffer/3490725283-74-6611",
+   "asking_eur": 350,
+   "verdict": "FAIR",
+   "first_seen": "2026-08-25"
+  },
+  {
+   "label": "Cort NTL50",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/westerngitarre-cort-ntl50-handcrafted-gitarre/3499918690-74-6434",
+   "asking_eur": 370,
+   "verdict": "FAIR",
+   "first_seen": "2026-09-04",
+   "note": "was 400 €, cut 370 € on 2026-09-07"
+  },
+  {
+   "label": "Cort Earth 70 OP neu",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/brandneu-cort-earth-70-op-gitarre-komplettes-zubehoer-set/3443752483-74-16347",
+   "asking_eur": 270,
+   "verdict": "FAIR",
+   "first_seen": "2026-09-04"
+  },
+  {
+   "label": "Framus Texan 5/196",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/framus-texan-gitarre-5-196-/3491832017-74-8993",
+   "asking_eur": 200,
+   "verdict": "FAIR",
+   "first_seen": "2026-09-04"
+  },
+  {
+   "label": "Art & Lutherie Cedar Bl",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/western-gitarre-art-lutherie-cedar-black/3496865621-74-9602",
+   "asking_eur": 350,
+   "verdict": "FAIR",
+   "first_seen": "2026-09-05"
+  },
+  {
+   "label": "Ibanez AW54-OPN",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/ibanez-westerngitarre/3394675195-74-6837",
+   "asking_eur": 280,
+   "verdict": "REJECT",
+   "first_seen": "2026-08-27"
+  },
+  {
+   "label": "Sigma DM-1ST",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/sigma-dm-1-st-westerngitarre/3474765463-74-7615",
+   "asking_eur": 400,
+   "verdict": "REJECT",
+   "first_seen": "2026-08-27"
+  },
+  {
+   "label": "Höfner HL3",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/hoefner-hl3-konzertgitarre-4-4-kaum-gespielt-mit-tragetasche/3470924015-74-6833",
+   "asking_eur": 260,
+   "verdict": "REJECT",
+   "first_seen": "2026-08-27"
+  },
+  {
+   "label": "Alhambra Iberia (chip)",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/gitarre-alhambra-mod-iberia/3496146180-74-7138",
+   "asking_eur": 450,
+   "verdict": "REJECT",
+   "first_seen": "2026-08-31"
+  },
+  {
+   "label": "Framus '/Framos' jumbo",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/akustikgitarre-marke-framos/3445200140-74-5850",
+   "asking_eur": 750,
+   "verdict": "REJECT",
+   "first_seen": "2026-08-31"
+  },
+  {
+   "label": "Höfner HD-75 (repaired)",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/hoefner-hd-75-konzertgitarre-meisterwerkstaette-vintage-1985/3462413374-74-6820",
+   "asking_eur": 240,
+   "verdict": "REJECT",
+   "first_seen": "2026-08-25"
+  },
+  {
+   "label": "LAG OC70",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/lag-akustikgitarre-oc70-wie-neu-4-4-massive-sitka-fichte-/3480975860-74-6432",
+   "asking_eur": 170,
+   "verdict": "BUY",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Fender CC-60SCE",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/fender-cc-60-sce-akustikgitarre/3484734079-74-6466",
+   "asking_eur": 149,
+   "verdict": "BUY",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Gretsch G9511 Parlor",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/gretsch-akustikgitarre/3490398170-74-6469",
+   "asking_eur": 215,
+   "verdict": "FAIR",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Maier vintage",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/akustikgitarre-gestempelt-maier/3496947063-74-16395",
+   "asking_eur": 120,
+   "verdict": "FAIR",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Ibanez Alt20-WK",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/ibanez-alt20-wk-westerngitarre/3501332394-74-6450",
+   "asking_eur": 180,
+   "verdict": "REJECT",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Hohner (Neuburg)",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/klassische-konzertgitarre/3504335221-74-6611",
+   "asking_eur": 150,
+   "verdict": "REJECT",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Ibanez AW65ECE-LG",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/gitarre-ibanez-artwood-massive-zederdecke/3492367414-74-6528",
+   "asking_eur": 199,
+   "verdict": "BUY",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Taylor 114ce",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/taylor-114ce-westerngitarre-zubehoer/3490350935-74-6446",
+   "asking_eur": 620,
+   "verdict": "FAIR",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Ibanez AW3000CE (far)",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/ibanez-artwood-aw3000ce-nt-2011-vollmassiv-l-r-baggs/3454012361-74-5135",
+   "asking_eur": 390,
+   "verdict": "FAIR",
+   "first_seen": "2026-09-06"
+  },
+  {
+   "label": "Antonio Lorca Mod 12",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/antonio-lorca-modell-12-konzertgitarre-mit-tasche/3505625179-74-6464",
+   "asking_eur": 250,
+   "verdict": "REJECT",
+   "first_seen": "2026-09-06"
+  }
+ ],
+ "_checked": "2026-09-07"
+}

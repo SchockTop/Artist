@@ -170,3 +170,55 @@ class RepostTest(unittest.TestCase):
         self.assertIn("1 relisted", text)
         self.assertIn("159 → 149 €", text)
         self.assertIn("unsold since 2026-09-01", text)
+
+
+class ShortlistTest(unittest.TestCase):
+    """The reserved/gone distinction that kept getting this wrong."""
+
+    def setUp(self):
+        from kleinanzeigen_search import shortlist
+        self.shortlist = shortlist
+        self.candidate = shortlist.Candidate(
+            label="Crafter", url="https://example.invalid/1", asking_eur=380, verdict="BUY")
+
+    def _page(self, body: str) -> str:
+        return ('<h1 id="viewad-title">Gitarre</h1>'
+                '<h2 id="viewad-price">380 &euro; VB</h2>' + body)
+
+    def check(self, page=None, error=None):
+        class FakeClient:
+            def get(self, url, use_cache=True):
+                if error is not None:
+                    raise error
+                return page
+        return self.shortlist.check(FakeClient(), self.candidate)
+
+    def test_reserviert_in_the_description_is_not_a_sale(self):
+        row = self.check(self._page(
+            "<p>Für den Versand ist eine gepolsterte Tasche reserviert.</p>"))
+        self.assertEqual(row.state, "live")
+        self.assertEqual(row.price_eur, 380)
+
+    def test_the_reserved_badge_is_reported(self):
+        row = self.check(self._page("<span>Reserviert</span>"))
+        self.assertEqual(row.state, "RESERVED")
+
+    def test_deleted_ad(self):
+        row = self.check("<p>Diese Anzeige ist nicht mehr verfügbar</p>")
+        self.assertEqual(row.state, "GONE")
+
+    def test_throttling_is_not_a_sale(self):
+        from kleinanzeigen_search.client import HttpError
+        row = self.check(error=HttpError("https://example.invalid/1", 403, "Forbidden"))
+        self.assertEqual(row.state, "UNKNOWN(403)")
+
+    def test_missing_ad_is_gone(self):
+        from kleinanzeigen_search.client import HttpError
+        row = self.check(error=HttpError("https://example.invalid/1", 404, "Not Found"))
+        self.assertEqual(row.state, "GONE")
+
+    def test_price_cut_is_reported_against_the_recorded_price(self):
+        page = ('<h1 id="viewad-title">Gitarre</h1>'
+                '<h2 id="viewad-price">300 &euro;</h2>')
+        row = self.check(page)
+        self.assertEqual(row.moved, -80)

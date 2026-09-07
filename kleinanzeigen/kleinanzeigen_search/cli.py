@@ -23,6 +23,7 @@ from .parser import parse_category_index, parse_suggested_categories
 from .routes import OSRM_URL, build_route
 from .search import search_city, search_route
 from .watch import WatchStore, render_digest
+from . import shortlist
 
 DEFAULT_CACHE = pathlib.Path.home() / ".cache" / "kleinanzeigen_search"
 CATEGORY_INDEX_URL = "https://www.kleinanzeigen.de/s-kategorien.html"
@@ -261,6 +262,24 @@ def cmd_watch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_shortlist(args: argparse.Namespace) -> int:
+    """Re-check the ads you picked by hand: still listed, and at what price?"""
+    candidates = shortlist.load(args.file)
+    client = make_client(args)
+    checks = []
+    for candidate in candidates:
+        row = shortlist.check(client, candidate)
+        checks.append(row)
+        print(f"  {candidate.label}: {row.state} {row.price_label}", file=sys.stderr)
+    out = shortlist.render(checks)
+    if args.output:
+        args.output.write_text(out, encoding="utf-8")
+        print(f"wrote {args.output}", file=sys.stderr)
+    else:
+        print(out)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="kleinanzeigen_search",
@@ -311,6 +330,13 @@ def build_parser() -> argparse.ArgumentParser:
     watch.add_argument("-o", "--output", type=pathlib.Path, help="write the digest to a file")
     add_common(watch)
     watch.set_defaults(func=cmd_watch)
+
+    shortlist_cmd = subparsers.add_parser(
+        "shortlist", help="re-check a hand-kept list of ads for price and availability")
+    shortlist_cmd.add_argument("file", help="JSON file of candidates")
+    shortlist_cmd.add_argument("-o", "--output", type=pathlib.Path)
+    add_common(shortlist_cmd)
+    shortlist_cmd.set_defaults(func=cmd_shortlist)
 
     categories = subparsers.add_parser("categories", help="list category ids")
     categories.add_argument("--for", dest="for_query", help="show the categories the site suggests for a search term")

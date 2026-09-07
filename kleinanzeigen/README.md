@@ -257,6 +257,19 @@ Responses are cached under `~/.cache/kleinanzeigen_search` for 15 minutes so rep
 * Driving routes and detour times: [OSRM demo server](https://router.project-osrm.org/) - light use
   only; point `--osrm-url` at your own instance for heavy use.
 
+## Shortlist
+
+The watch tells you what changed in a whole area. Once you have picked a few
+ads out of it by hand, `candidates.json` is where they live, and
+
+```bash
+python3 -m kleinanzeigen_search shortlist candidates.json
+```
+
+re-checks each one: still listed, reserved, deleted, and at what price now.
+Only a 404/410 counts as gone - a 403 is the site throttling you and is
+reported as unchecked rather than as a sale.
+
 ## Tests
 
 ```bash
