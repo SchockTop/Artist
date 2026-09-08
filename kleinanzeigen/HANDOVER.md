@@ -9,14 +9,14 @@ verified prices, the market analysis, and the open questions.
 - **Branch:** `claude/kleinanzeigen-route-searcher-gpj5k5`
 - **Project directory:** `kleinanzeigen/` (deliberately isolated — the rest of the repo is an
   unrelated 3D/diffusion research project called "Artist" and must not be touched)
-- **Head commit at handover:** `a18b1b8`
-- **Status:** 223 tests passing, verified working from a clean clone, running live
+- **Head commit at handover:** `5f15968`
+- **Status:** 224 tests passing, verified working from a clean clone, running live
 - **Last verified:** 8 September 2026
 
 ```bash
 git clone -b claude/kleinanzeigen-route-searcher-gpj5k5 https://github.com/SchockTop/Artist.git
 cd Artist/kleinanzeigen
-python3 -m unittest discover -s tests -t .     # 223 tests, no network needed
+python3 -m unittest discover -s tests -t .     # 224 tests, no network needed
 ```
 
 ---
@@ -499,7 +499,7 @@ link without its ad id. **Always take ad URLs from the search data, never constr
 | `48ed43f` | catch an ad that vanishes between two runs on the same day |
 | `738502a` | name the areas a run could not finish |
 | `a18b1b8` | keep the hand-picked shortlist in the repo, not in a scratch script |
-| *(head)* | count distinct ads in the digest; price deltas mean "since last check" |
+| `5f15968` | count distinct ads in the digest; price deltas mean "since last check" |
 
 ---
 
