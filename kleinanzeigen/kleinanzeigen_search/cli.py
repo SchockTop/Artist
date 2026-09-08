@@ -271,6 +271,9 @@ def cmd_shortlist(args: argparse.Namespace) -> int:
         row = shortlist.check(client, candidate)
         checks.append(row)
         print(f"  {candidate.label}: {row.state} {row.price_label}", file=sys.stderr)
+    if args.update:
+        shortlist.save(args.file, checks)
+        print(f"recorded today's prices in {args.file}", file=sys.stderr)
     out = shortlist.render(checks)
     if args.output:
         args.output.write_text(out, encoding="utf-8")
@@ -335,6 +338,8 @@ def build_parser() -> argparse.ArgumentParser:
         "shortlist", help="re-check a hand-kept list of ads for price and availability")
     shortlist_cmd.add_argument("file", help="JSON file of candidates")
     shortlist_cmd.add_argument("-o", "--output", type=pathlib.Path)
+    shortlist_cmd.add_argument("--update", action="store_true",
+                               help="write today's prices back so the next run reports the new delta")
     add_common(shortlist_cmd)
     shortlist_cmd.set_defaults(func=cmd_shortlist)
 

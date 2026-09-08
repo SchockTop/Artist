@@ -222,3 +222,21 @@ class ShortlistTest(unittest.TestCase):
                 '<h2 id="viewad-price">300 &euro;</h2>')
         row = self.check(page)
         self.assertEqual(row.moved, -80)
+
+
+class HeadlineCountTest(unittest.TestCase):
+    def test_one_ad_in_two_overlapping_areas_counts_once(self):
+        """Corridors overlap, so the same ad shows up under several keys."""
+        store_a = Changes(key="a")
+        store_b = Changes(key="b")
+        listing = ad("1", 117)
+        seen = __import__("kleinanzeigen_search.watch", fromlist=["Seen"]).Seen(
+            ad_id="1", title="LaMancha", url="https://example.invalid/1",
+            price_eur=117, first_seen="2026-09-01", last_seen="2026-09-08")
+        store_a.new.append(listing)
+        store_b.new.append(listing)
+        store_a.gone.append(seen)
+        store_b.gone.append(seen)
+        digest = render_digest([store_a, store_b])
+        self.assertIn("1 new", digest)
+        self.assertIn("1 vanished", digest)

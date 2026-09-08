@@ -9,14 +9,14 @@ verified prices, the market analysis, and the open questions.
 - **Branch:** `claude/kleinanzeigen-route-searcher-gpj5k5`
 - **Project directory:** `kleinanzeigen/` (deliberately isolated — the rest of the repo is an
   unrelated 3D/diffusion research project called "Artist" and must not be touched)
-- **Head commit at handover:** `5a4582b`
-- **Status:** 200 tests passing, verified working from a clean clone, running live
-- **Last verified:** 2 September 2026
+- **Head commit at handover:** `a18b1b8`
+- **Status:** 223 tests passing, verified working from a clean clone, running live
+- **Last verified:** 8 September 2026
 
 ```bash
 git clone -b claude/kleinanzeigen-route-searcher-gpj5k5 https://github.com/SchockTop/Artist.git
 cd Artist/kleinanzeigen
-python3 -m unittest discover -s tests -t .     # 200 tests, no network needed
+python3 -m unittest discover -s tests -t .     # 223 tests, no network needed
 ```
 
 ---
@@ -128,6 +128,29 @@ python3 -m kleinanzeigen_search watch --config watches.json --slot morning --dry
 
 **Politeness:** `--delay` (seconds between requests, default 2), `--no-cache`, `--cache-ttl`.
 Responses cache in `~/.cache/kleinanzeigen_search` for 15 minutes.
+
+### 2.2b The shortlist (`candidates.json` + `shortlist`)
+
+The watch answers *"what changed in this whole area"*. The shortlist answers the other half —
+*"are the few ads I actually picked still there, and has the seller moved"* — for a list curated
+by hand and kept between sessions.
+
+```bash
+python3 -m kleinanzeigen_search shortlist candidates.json
+```
+
+`candidates.json` holds one row per ad: `label`, `url`, `asking_eur`, `verdict`
+(BUY / CHECK / FAIR / REJECT), `first_seen`, `note`. Update `asking_eur` when a price is
+confirmed so the next run reports the delta against a real observation.
+
+Two rules are baked into `shortlist.py` and covered by tests — both were learned the hard way:
+
+- **Only 404/410 mean gone.** A 403 is the site throttling and is reported `UNKNOWN(403)`,
+  never as a sale. Re-run the unknowns with `--delay 7`; they almost always come back live.
+- **"reserviert" in the description is prose, not a status.** Only the badge counts.
+
+This file existed for two weeks as a throwaway script inside a session container — the hardest
+thing in the project to reproduce and the least durable. Keep it in the repo.
 
 ### 2.3 How route mode works
 
@@ -405,6 +428,52 @@ Useful for a future maintainer — several are subtle and would silently corrupt
    nothing now **raises** instead of returning an empty result. Under an unattended twice-daily
    cron this failure mode could otherwise hide for weeks. *(`5a4582b`)*
 
+8. **Re-posts counted as a sale plus a new arrival.** A seller deleting and re-uploading the
+   same guitar showed up as one ad vanishing and one appearing — two false signals from one
+   non-event. `_match_reposts()` now pairs them and reports `↻ relisted · unsold since …`, which
+   is the genuinely useful reading: the ad failed to sell. *(`b33d83d`)*
+
+9. **An area stopped by an error counted as covered.** A 403 mid-area marked it exhausted, which
+   made it "complete", which authorised the gone-check over inventory that was never seen.
+   `AreaCoverage.failed` now separates *exhausted* from *stopped*. *(`44fed4a`)*
+
+10. **Geocoder hardcoded to Germany.** `could not locate waypoint 'Strasbourg, France'`. Country
+    bias first, worldwide fallback second. *(`e0e4497`)*
+
+11. **Ad-page photo scrape included other people's ads.** An ad page shows the seller's gallery
+    and then, under *"Das könnte dich auch interessieren"*, thumbnails of unrelated ads — same
+    image host. Sweeping the markup mixed a stranger's student 3/4 into the gallery and nearly
+    produced the wrong verdict on two ads in one session. `parse_gallery_images()` cuts the page
+    at that heading. **Never read an ad's photos without scoping to the gallery.** *(`69a2baa`)*
+
+12. **The second run of a day could never report a disappearance.** The gone-check skipped any ad
+    whose `last_seen` was already today. With a twice-daily schedule the evening slot was
+    structurally blind to same-day sales — exactly the case it exists for, since city ads are the
+    ones that move within hours. Fixing it immediately surfaced two Munich sales that had been
+    silently swallowed. *(`48ed43f`)*
+
+13. **A partly-covered area vanished from the digest.** `render_digest` skips quiet areas, so an
+    area that stopped early — whose ads were therefore never checked for sale — disappeared from
+    the report while the headline still read "0 vanished". The vanished count is a floor whenever
+    coverage is partial; the headline and a trailing list now say so. *(`738502a`)*
+
+14. **"reserviert" in prose read as a sale.** The candidate re-checker matched the word anywhere
+    on the page. One ad says a padded gig bag *"ist für den Versand reserviert"*, so the Crafter
+    was reported sold for a week while it sat there for sale. Only the badge (`>Reserviert<`, its
+    own element) counts now, and it is reported apart from *gone*. Same script also treated any
+    `HttpError` as a deletion — a 403 is throttling, and is now `UNKNOWN`, never a sale.
+    *(`a18b1b8`, now in `shortlist.py` with tests)*
+
+15. **The digest headline counted one ad several times.** Corridors overlap and keywords repeat,
+    so a single ad appears under several watch keys. Summing the per-key lists reported one 3/4
+    guitar leaving the market as *three* sales — "6 vanished" when four ads actually went. The
+    headline now counts distinct ad ids.
+
+16. **Shortlist price deltas never reset.** The delta was measured against `asking_eur`, the
+    first-sighting price, so a cut made a week ago reappeared as today's news every single run.
+    `last_price_eur` now records what each run saw and the delta means *since the last check*;
+    `--update` writes it back. The first-sighting price is still shown when the two differ.
+
 **Also worth recording:** during research I twice fabricated a URL instead of looking it up — once
 guessing ad-detail URLs that resolved to an iPhone and a coffee table, once pasting an Alhambra
 link without its ad id. **Always take ad URLs from the search data, never construct them.**
@@ -423,12 +492,25 @@ link without its ad id. **Always take ad URLs from the search data, never constr
 | `401423a` | parse the 2026 result-page redesign |
 | `56f9cd5` | scheduled watches: price drops, not just new ads |
 | `5a4582b` | fail loudly when the result page stops parsing |
+| `e0e4497` | geocode waypoints outside Germany |
+| `44fed4a` | an area stopped by an error is not fully covered |
+| `b33d83d` | recognise relisted ads instead of counting them as sales |
+| `69a2baa` | read only the seller's own photos from an ad page |
+| `48ed43f` | catch an ad that vanishes between two runs on the same day |
+| `738502a` | name the areas a run could not finish |
+| `a18b1b8` | keep the hand-picked shortlist in the repo, not in a scratch script |
+| *(head)* | count distinct ads in the digest; price deltas mean "since last check" |
 
 ---
 
-## 5. The guitar shortlist — all live and verified 1 Sept 2026
+## 5. The guitar shortlist
 
-Prices are as last checked. **Everything below was still online.** Links go to the live ads.
+> **The live source of truth is `candidates.json` in this directory** — 48 ads with prices and
+> verdicts, re-checkable with `python3 -m kleinanzeigen_search shortlist candidates.json`.
+> The prose below is the reasoning behind those verdicts, which the JSON does not carry.
+> §5.1–5.6 were verified 1 Sept; §5.7 adds what the later searches found.
+
+Prices are as last checked. Links go to the live ads.
 
 ### 5.1 Recommended — nylon (Konzertgitarre)
 
@@ -522,15 +604,98 @@ Yamahas barely undercut new, which is why the CG101MS (a solid-top model) is the
 
 ---
 
+### 5.7 Added 4–7 September (Strasbourg / Schwarzwald routes and the Munich watch)
+
+**The three that changed the picture:**
+
+| guitar | price | where | why it matters |
+| --- | --- | --- | --- |
+| [Ibanez AW65ECE-LG](https://www.kleinanzeigen.de/s-anzeige/gitarre-ibanez-artwood-massive-zederdecke/3492367414-74-6528) | **199 € VB** | München-Bogenhausen | Solid cedar top, Fishman Sonicore + AEQ-SP2 with tuner. **Thomann sells it new today for 335 €** (UVP 399) — the only item priced against a *live* retail figure rather than a guess. 59 % of new. Photos clean, neck straight. Seller says "Mahagoni" back/sides; Ibanez specs say laminated okoume — small overstatement, not a dealbreaker. |
+| [Camps Sonata](https://www.kleinanzeigen.de/s-anzeige/gitarre-camps-sonata-konzertgitarre-made-in-spain/3503696391-74-9299) | **220 €** | Stuttgart-Möhringen | Solid cedar top, mahogany b/s, Made in Spain. New 360–480 € → 46–61 %. Gallery (10 photos, verified as the seller's own) shows one cedar-topped guitar, clean top, straight neck, GEWA padded bag and a stand included. Only reachable on a westward trip. |
+| [LAG OC70](https://www.kleinanzeigen.de/s-anzeige/lag-akustikgitarre-oc70-wie-neu-4-4-massive-sitka-fichte-/3480975860-74-6432) | **170 € fixed** | Nürnberg / München weekends | Solid Engelmann spruce, sapele b/s, **51 mm nut** (narrower than a standard classical — easier coming off a child's guitar), designed under Maurice Dupont. New 244–259 €, so ~70 %: a *fair* price from an honest seller, not a steal. Played under an hour. |
+
+**Added 8 Sept — [Sigma OMM-ST+](https://www.kleinanzeigen.de/s-anzeige/sigma-westerngitarre/3506542344-74-6475), 170 € VB, München-Aubing/Pasing.** Model read off the
+soundhole label (the ad names no model — the naive-seller pattern of §6.3): *OMM-ST+, serial
+190510071*. **Solid Sitka spruce top**, mahogany body, **OM body — smaller than a dreadnought**,
+and a **44.5 mm nut**, which is unusually wide for a steel-string and the closest thing on this
+list to nylon string spacing. New **289 €**, so 59 % — and the photos show essentially no wear.
+
+**This and the Ibanez AW65ECE are the two to compare, and they are the same value:**
+
+| | Sigma OMM-ST+ | Ibanez AW65ECE-LG |
+| --- | --- | --- |
+| price / new | 170 € / 289 € (59 %) | 199 € / 335 € (59 %) |
+| top | solid **spruce** — more headroom, needs driving | solid **cedar** — warm, responds to a light touch |
+| body | OM, small, comfortable | dreadnought with cutaway, louder |
+| nut | **44.5 mm** — easiest step from nylon | 43 mm |
+| electronics | none | Fishman + built-in tuner |
+
+For someone coming off a child's nylon guitar, **the Sigma is the better shape and the better
+neck, and it is cheaper**; the Ibanez gives more volume and a pickup that is not needed yet.
+
+**The open 700 € question — two German classicals, same price:**
+
+- [**Armin Hanika 50 PC**](https://www.kleinanzeigen.de/s-anzeige/gitarre-armin-hanika/3498855741-74-7596) — 700 € (was 800). All-solid, verified 1.099 € new. Was reserved, buyer withdrew. Direct seller. **The safer 700 €.** Questions still unsent: attic storage, top cracks, a daylight photo.
+- [**Dieter Hopf Grandioso 1-F, 2018**](https://www.kleinanzeigen.de/s-anzeige/dieter-hopf-grandioso-1-f-2018-konzertgitarre/3506021228-74-6481) — 700 €, München-Trudering. German-built, 65 cm scale, 52 mm nut, spruce top, rosewood b/s, Microtune compensated saddle (visible in the photos). Photos show a solid spruce top with clear silking, flat and clean; one nick in the binding. **Higher ceiling — but unverified.** Hopf's dealer page calls the Grandioso *vollmassiv*; another dealer description says the back and sides are **3-ply** rosewood. The seller hedges the same way (*"laut Katalog noch in der massiven Ausführung"*) and is selling **on commission**, so he likely does not know. **Settle it in person:** look into the soundhole at the back centre seam and at the body edge — solid rosewood is dark through, a laminate shows a pale core line. That difference is most of the value.
+
+**Also worth a look, all verified live:** Höfner Carmencita HC 504 (200 €, invoice included) · Höfner HF12 (240 € VB) · Sigma STE (250 € VB) · Fender CC-60SCE (149 €, solid spruce concert + Fishman, ~279 € new) · Gretsch G9511 Style 1 parlor (215 € VB, solid Sitka, discontinued, ~$299 street — but a small box) · Art & Lutherie Cedar Black (350 € VB, has a deeper scratch) · Simon & Patrick all-solid (800 €, "Demo" label, no serial, needs authentication) · Ibanez AW3000CE 2011 (390 €, genuinely all-solid with L.R. Baggs — but 347 km away in Rheinland-Pfalz, on no route).
+
+**Rejected 8 Sept:** Alhambra S-1 C (250 € VB — entry Spanish model, ~270–320 € new, so ~80 %;
+the 5P already on the list is a far better guitar) · Baton Rouge R11AGP (150 €, Laim, +1 min —
+the ad hedges "Fichte/Zeder" and never says *solid*, which usually means it isn't) · Ibanez GA100s
+(200 €, laminate student classical) · Harley Benton × 2 (110 / 199 €) · Musima (120 €).
+
+**Rejected from these searches:** Antonio Lorca Mod 12 (250 €, entry student guitar above new
+price) · Hohner from a Neuburg flipper (150 € VB, laminate student, 90–150 € new, and the same
+seller listed a second guitar one ad-id apart) · Yamaha C40M (100 €, brand new but a laminate
+student guitar — sideways from a child's guitar, not up) · Ibanez Alt20-WK (180 €, laminate
+sapele, discontinued) · Guild 12-string (600 €, wrong instrument for a beginner).
+
+**A scoring caveat worth remembering:** the deal scorer is fooled by generic titles. "Fender
+Akustikgitarre" (120 €, an entry laminate) scored **96**; a no-brand 38-inch starter set scored
+**74**; the Yamaha C40M scored **98**. A bare brand name matches expensive comparables. **Score
+ranks candidates for a human to read — it is not a verdict.**
+
+---
+
 ## 6. Market analysis — what the data actually shows
 
-### 6.1 The disappearance hypothesis was tested and does not hold
+### 6.1 The disappearance hypothesis holds in the city and nowhere else
 
 The owner proposed: *new uploads are most likely to be good deals, and if they disappear fast
 that proves the deal was real.*
 
-**41 ads tracked from 25 August to 1 September. Zero disappeared.** Not the Alhambra, not the
-Seagull, not the 50 € Yamaha, not the rejected ones.
+**First reading (25 Aug – 1 Sept): 41 hand-picked ads, zero disappeared.** Extended to 8 Sept
+over 48 ads, still zero. That shortlist is mostly countryside, and for the countryside the
+conclusion stands: a guitar not selling in a week means nothing.
+
+**But it was the wrong sample, and bug 12 was hiding the counter-evidence.** Until 6 Sept the
+evening watch could not report a same-day disappearance at all. With that fixed, the München/Laim
+corridor produced **seven distinct sales in three days**:
+
+| ad | price | note |
+| --- | --- | --- |
+| Ibanez AC340-OPN | 160 € | confirmed gone, not relisted anywhere in a 40 km Munich search |
+| Ibanez AEWC31BC-OPN | 200 € | |
+| unbranded Klassikgitarre | 100 € | gone within hours of appearing |
+| unbranded Akustikgitarre | 140 € | |
+| LaMancha Rubi CM/59 **3/4** | 117 € | |
+| Granada **3/4** Kindergitarre | 120 € | |
+| Stagg Westerngitarre (nylon) | 150 € | |
+
+**Everything that sold was 100–200 €, and three of the seven were children's sizes** in the first
+week of September — plausibly the school year starting, though that is one week of data and an
+inference, not a measurement.
+
+**The corrected rule: geography decides liquidity, not newness.**
+
+| | countryside (Schrobenhausen, Wolnzach, Schwarzwald) | city (München) |
+| --- | --- | --- |
+| turnover | 0 of 48 in two weeks | 7 ads in 3 days, all under 200 € |
+| what to do | take your time, negotiate on ad age | message the same day |
+
+Every Munich ad that sold was priced **100–200 €**. Nothing above 200 € has sold anywhere. So
+the urgency is real only in the bottom of the price band, in the city.
 
 **Ad age distribution (141 ads, Pfaffenhofen area, 1 Sept 2026):**
 
@@ -622,28 +787,52 @@ and worth it — factor it into the offer.
 **Negotiation:** long-standing ads have quiet leverage. The Admira has been up since 25 December;
 the Alhambra 5P since 10 May. "VB" (Verhandlungsbasis) means the price is negotiable.
 
-**The recommendation as it stands:** play the **Seagull S6 (310 €)** and the **Alhambra 5P
-(500 €)** back to back. One is the best steel-string value found, the other the best classical.
-That comparison settles the nylon-vs-steel question, which is the real decision.
+**The recommendation as it stands (8 Sept):** the nylon-vs-steel question is still the only
+thing blocking a decision, and it cannot be settled from photos — it needs one afternoon with one
+of each in hand. Three instruments are worth that afternoon:
 
-If the Hanika's answers come back clean, it displaces everything.
+| | | |
+| --- | --- | --- |
+| **Sigma OMM-ST+** | 170 € | Steel. 59 % of new, OM body, 44.5 mm nut — the gentlest step up from a child's nylon guitar. In München. |
+| **Ibanez AW65ECE** | 199 € | Steel. Also 59 % of new. Bigger, louder, cedar, has a pickup. In München. |
+| **LAG OC70** | 170 € | Nylon. Near-new, solid top, lowest risk. Fair rather than cheap. |
+| **Camps Sonata** | 220 € | Nylon. The better instrument of the two; needs the westward trip. |
+
+The Seagull S6 (310 €) and Alhambra 5P (500 €) remain good and remain live, but the Ibanez beats
+the Seagull on verified value and the LAG/Camps beat the Alhambra on price for a beginner.
+
+**If the budget goes to 700 €**, that is a different and better guitar — see the Hanika-vs-Hopf
+comparison in §5.7. The Hanika is the safe one; the Hopf is the higher ceiling if its back and
+sides turn out to be solid.
+
+**One asymmetry that should drive the order of operations:** the Munich items sit in the price
+band where four ads sold in two days (§6.1). The countryside items have not moved in two weeks.
+Message Munich the same day; drive to the country whenever.
 
 ---
 
 ## 8. Open questions and next steps
 
-1. **Message the Armin Hanika seller** — highest upside, questions listed in §5.3.
-2. **Nylon or steel** — unresolved; needs a side-by-side play.
-3. **Start the cron watch** on the owner's own machine (§2.7). The seeded baseline is gone; the
-   first local run reports everything as new.
-4. **Widen the keyword slots.** Currently four generic terms. A **brand slot** (Yamaha, Cort,
+1. **Message the Armin Hanika seller** — still unsent after a week, still the highest-upside
+   open item. Questions in §5.3.
+2. **Nylon or steel** — unresolved; needs a side-by-side play. Everything else waits on it.
+3. **Settle the Hopf's back and sides** (§5.7) — solid or 3-ply decides whether 700 € is a
+   bargain or an overpay, and it is a ten-second check in person.
+4. **Start the cron watch** on the owner's own machine (§2.7). ⚠ **The watch state has never
+   survived** — it lives at `~/.local/state/kleinanzeigen_search/watches.json` inside an
+   ephemeral session container and dies with the session, taking ~161 ads of first-seen /
+   lowest-price history with it. That history is what makes "↓ 400 → 370 €, first seen 1 Sept"
+   possible, and it cannot be reconstructed after the fact. Running it locally is the only fix.
+   `candidates.json` was moved into the repo for exactly this reason; the watch state has not
+   been, because it is machine-local run state rather than curated data.
+5. **Widen the keyword slots.** Currently four generic terms. A **brand slot** (Yamaha, Cort,
    Seagull, Höfner, Alhambra, Takamine, Crafter, Esteve, Hanika) would suit the naive-seller
    theory — those ads are where the price is most often wrong. Also worth adding: "Dreadnought",
    "Parlor", "Gitarre massiv".
-5. **Ideas never built:** time-based circle spacing (denser where the road is slow), making
+6. **Ideas never built:** time-based circle spacing (denser where the road is slow), making
    `--max-detour-min` the primary filter with the km corridor derived from it, email/push
    delivery of the digest, and a photo-based condition pre-screen.
-6. **The parser will break again.** The site redesigned once mid-project. It now fails loudly
+7. **The parser will break again.** The site redesigned once mid-project. It now fails loudly
    (§4 bug 7) — when the log shows *"result page could not be parsed"*, the fix is to inspect a
    saved page and extend `parse_listings_modern()`.
 
@@ -667,13 +856,22 @@ python3 -m kleinanzeigen_search city "Alhambra 5P" --category-id 74 --pages 4 --
 
 # the scheduled watch
 python3 -m kleinanzeigen_search watch --config watches.json --dry-run
+
+# re-check the hand-picked shortlist for availability and price
+python3 -m kleinanzeigen_search shortlist candidates.json --delay 4
 ```
 
 **Key numbers to remember:** category `74` = Musikinstrumente · radii 5/10/20/30/50/100/150/200 ·
-pagination stops ~page 50 · `--delay 2` minimum · 403s are normal and retried · median ad age
-31 days · used should be 50–75 % of new.
+pagination stops ~page 50 · `--delay 2` minimum (use `--delay 7` to clear 403s) · 403s are normal
+and retried, and **a 403 is never a sale** · median ad age 31 days · used should be 50–75 % of new
+· countryside turnover ≈ 0, München ≈ 5 % / 4 days and faster under 200 €.
+
+**Three habits that prevented wrong answers, and are worth keeping:** take ad URLs from the search
+data and never construct them · scope ad photos to the seller's gallery, never the whole page ·
+verify every "gone" and every "new price" against a live fetch before telling the owner.
 
 ---
 
-*Compiled 2 September 2026. All prices, links and availability verified on 1–2 September 2026.
-Ad availability changes; re-check before driving anywhere.*
+*Compiled 2 September 2026, revised 8 September 2026. Prices, links and availability re-verified
+daily 4–8 September; the machine-readable state is `candidates.json`. Ad availability changes;
+re-check before driving anywhere.*

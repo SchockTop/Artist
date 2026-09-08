@@ -161,10 +161,16 @@ class WatchStore:
 def render_digest(all_changes: list[Changes], limit: int = 12) -> str:
     """A short, skimmable digest - the thing you actually read twice a day."""
     lines: list[str] = []
-    total_new = sum(len(c.new) for c in all_changes)
-    total_drops = sum(len(c.drops) for c in all_changes)
-    total_gone = sum(len(c.gone) for c in all_changes)
-    total_reposts = sum(len(c.reposts) for c in all_changes)
+    # Corridors overlap and keywords repeat, so one ad can appear under several
+    # keys.  Summing the per-key lists counted a single 3/4 guitar leaving the
+    # market as three sales.  Count distinct ads instead.
+    def distinct(pick) -> int:
+        return len({row.ad_id for changes in all_changes for row in pick(changes)})
+
+    total_new = distinct(lambda c: c.new)
+    total_drops = distinct(lambda c: [d.listing for d in c.drops])
+    total_gone = distinct(lambda c: c.gone)
+    total_reposts = distinct(lambda c: [r.listing for r in c.reposts])
     # An area the run could not finish never had its "gone" list computed, so
     # the vanished count is a floor, not a total.  Say so in the headline:
     # a quiet area is skipped below, and without this an unchecked one would

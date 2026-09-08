@@ -37,6 +37,9 @@ class Candidate:
     verdict: str = ""
     first_seen: str = ""
     note: str = ""
+    # The price seen on the last run. asking_eur stays the first-sighting
+    # anchor, so a cut made a week ago does not keep reappearing as news.
+    last_price_eur: int | None = None
 
 
 @dataclasses.dataclass
@@ -47,12 +50,24 @@ class Check:
     price_eur: int | None = None
 
     @property
+    def before(self) -> int | None:
+        """The price this ad had at the previous check."""
+        candidate = self.candidate
+        return candidate.last_price_eur if candidate.last_price_eur is not None else candidate.asking_eur
+
+    @property
     def moved(self) -> int | None:
-        """Change against the price last written down, negative for a cut."""
+        """Change since the previous check, negative for a cut."""
+        if self.price_eur is None or self.before is None:
+            return None
+        return (self.price_eur - self.before) or None
+
+    @property
+    def total_moved(self) -> int | None:
+        """Change since the ad was first written down."""
         if self.price_eur is None or self.candidate.asking_eur is None:
             return None
-        delta = self.price_eur - self.candidate.asking_eur
-        return delta or None
+        return (self.price_eur - self.candidate.asking_eur) or None
 
 
 def load(path: str | pathlib.Path) -> list[Candidate]:
@@ -89,11 +104,24 @@ def check(client: HttpClient, candidate: Candidate) -> Check:
     )
 
 
+def save(path: str | pathlib.Path, checks: list[Check]) -> None:
+    """Write the observed prices back so the next run reports the new delta."""
+    file = pathlib.Path(path).expanduser()
+    raw = json.loads(file.read_text(encoding="utf-8"))
+    rows = raw["candidates"] if isinstance(raw, dict) else raw
+    by_url = {row.candidate.url: row for row in checks}
+    for row in rows:
+        seen = by_url.get(row["url"])
+        if seen is not None and seen.price_eur is not None:
+            row["last_price_eur"] = seen.price_eur
+    file.write_text(json.dumps(raw, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
 def render(checks: list[Check]) -> str:
     lines = []
     for row in checks:
         moved = row.moved
-        move = f"  ({row.candidate.asking_eur} → {row.price_eur} €)" if moved else ""
+        move = f"  ({row.before} → {row.price_eur} €)" if moved else ""
         lines.append(
             f"{row.candidate.verdict:<7} {row.candidate.label:<26}"
             f" {row.state:<11} {row.price_label:<12}{move}"
@@ -102,12 +130,15 @@ def render(checks: list[Check]) -> str:
     unknown = [r for r in checks if r.state.startswith("UNKNOWN")]
     cuts = [r for r in checks if (r.moved or 0) < 0]
     lines.append("")
-    lines.append(f"{len(checks)} tracked · {len(gone)} gone · {len(cuts)} price cut(s)"
+    lines.append(f"{len(checks)} tracked · {len(gone)} gone · {len(cuts)} price cut(s) since last check"
                  + (f" · {len(unknown)} unchecked" if unknown else ""))
     for row in gone:
-        lines.append(f"   × {row.candidate.label} ({row.candidate.asking_eur} €)")
+        lines.append(f"   × {row.candidate.label} ({row.before} €)")
     for row in cuts:
-        lines.append(f"   ↓ {row.candidate.label}: {row.candidate.asking_eur} → {row.price_eur} €")
+        total = row.total_moved
+        since = (f"  ({row.candidate.asking_eur} € when first seen)"
+                 if total is not None and total != row.moved else "")
+        lines.append(f"   ↓ {row.candidate.label}: {row.before} → {row.price_eur} €{since}")
     for row in unknown:
         lines.append(f"   ? {row.candidate.label} - {row.state}, not checked")
     return "\n".join(lines)
