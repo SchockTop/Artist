@@ -6,7 +6,8 @@
    "url": "https://www.kleinanzeigen.de/s-anzeige/alhambra-5-p-konzertgitarre/3404947227-74-6375",
    "asking_eur": 500,
    "verdict": "BUY",
-   "first_seen": "2026-08-25"
+   "first_seen": "2026-08-25",
+   "last_price_eur": 500
   },
   {
    "label": "Crafter STG D-18ce Pro",
@@ -184,7 +185,7 @@
    "asking_eur": 465,
    "verdict": "FAIR",
    "first_seen": "2026-08-25",
-   "last_price_eur": 450
+   "last_price_eur": 425
   },
   {
    "label": "Ibanez AW45-OPN",
@@ -386,7 +387,23 @@
    "verdict": "REJECT",
    "first_seen": "2026-09-06",
    "last_price_eur": 250
+  },
+  {
+   "label": "Sigma OMM-ST+",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/sigma-westerngitarre/3506542344-74-6475",
+   "asking_eur": 170,
+   "verdict": "BUY",
+   "first_seen": "2026-09-08",
+   "note": "model read off the soundhole label; solid Sitka spruce, OM body, 44.5 mm nut, 289 EUR new"
+  },
+  {
+   "label": "Hopf Grandioso 1-F",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/dieter-hopf-grandioso-1-f-2018-konzertgitarre/3506021228-74-6481",
+   "asking_eur": 700,
+   "verdict": "CHECK",
+   "first_seen": "2026-09-07",
+   "note": "solid or 3-ply back/sides unresolved - check the soundhole seam in person"
   }
  ],
- "_checked": "2026-09-07"
+ "_checked": "2026-09-09"
 }
