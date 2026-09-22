@@ -31,7 +31,7 @@
    "asking_eur": 200,
    "verdict": "BUY",
    "first_seen": "2026-08-30",
-   "last_price_eur": 200
+   "last_price_eur": 100
   },
   {
    "label": "Taylor 114e Walnut",
@@ -56,7 +56,7 @@
    "verdict": "BUY",
    "first_seen": "2026-08-30",
    "note": "was 149 €, cut 139 € on 2026-09-07",
-   "last_price_eur": 139
+   "last_price_eur": 130
   },
   {
    "label": "Admira Málaga",
@@ -80,7 +80,7 @@
    "asking_eur": 400,
    "verdict": "BUY",
    "first_seen": "2026-08-27",
-   "last_price_eur": 400
+   "last_price_eur": 350
   },
   {
    "label": "Esteve 6PS",
@@ -121,7 +121,7 @@
    "asking_eur": 220,
    "verdict": "BUY",
    "first_seen": "2026-09-05",
-   "last_price_eur": 220
+   "last_price_eur": 199
   },
   {
    "label": "Höfner Carmencita HC504",
@@ -169,7 +169,7 @@
    "asking_eur": 550,
    "verdict": "CHECK",
    "first_seen": "2026-08-31",
-   "last_price_eur": 550
+   "last_price_eur": 480
   },
   {
    "label": "Simon & Patrick",
@@ -234,7 +234,7 @@
    "verdict": "FAIR",
    "first_seen": "2026-09-04",
    "note": "was 400 €, cut 370 € on 2026-09-07",
-   "last_price_eur": 370
+   "last_price_eur": 350
   },
   {
    "label": "Cort Earth 70 OP neu",
@@ -258,7 +258,7 @@
    "asking_eur": 350,
    "verdict": "FAIR",
    "first_seen": "2026-09-05",
-   "last_price_eur": 350
+   "last_price_eur": 300
   },
   {
    "label": "Ibanez AW54-OPN",
@@ -274,7 +274,7 @@
    "asking_eur": 400,
    "verdict": "REJECT",
    "first_seen": "2026-08-27",
-   "last_price_eur": 400
+   "last_price_eur": 380
   },
   {
    "label": "Höfner HL3",
@@ -290,7 +290,7 @@
    "asking_eur": 450,
    "verdict": "REJECT",
    "first_seen": "2026-08-31",
-   "last_price_eur": 300
+   "last_price_eur": 200
   },
   {
    "label": "Framus '/Framos' jumbo",
@@ -306,7 +306,7 @@
    "asking_eur": 240,
    "verdict": "REJECT",
    "first_seen": "2026-08-25",
-   "last_price_eur": 199
+   "last_price_eur": 180
   },
   {
    "label": "LAG OC70",
@@ -322,7 +322,7 @@
    "asking_eur": 149,
    "verdict": "BUY",
    "first_seen": "2026-09-06",
-   "last_price_eur": 139
+   "last_price_eur": 129
   },
   {
    "label": "Gretsch G9511 Parlor",
@@ -370,7 +370,7 @@
    "asking_eur": 620,
    "verdict": "FAIR",
    "first_seen": "2026-09-06",
-   "last_price_eur": 620
+   "last_price_eur": 600
   },
   {
    "label": "Ibanez AW3000CE (far)",
@@ -394,7 +394,8 @@
    "asking_eur": 170,
    "verdict": "BUY",
    "first_seen": "2026-09-08",
-   "note": "model read off the soundhole label; solid Sitka spruce, OM body, 44.5 mm nut, 289 EUR new"
+   "note": "model read off the soundhole label; solid Sitka spruce, OM body, 44.5 mm nut, 289 EUR new",
+   "last_price_eur": 170
   },
   {
    "label": "Hopf Grandioso 1-F",
@@ -402,8 +403,41 @@
    "asking_eur": 700,
    "verdict": "CHECK",
    "first_seen": "2026-09-07",
-   "note": "solid or 3-ply back/sides unresolved - check the soundhole seam in person"
+   "note": "solid or 3-ply back/sides unresolved - check the soundhole seam in person",
+   "last_price_eur": 700
+  },
+  {
+   "label": "Andaluza SHC602",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/andaluza-konzertgitarre-inkl-rok-sak-tasche-sehr-gepflegt/3509368903-74-5834",
+   "asking_eur": 100,
+   "verdict": "REJECT",
+   "first_seen": "2026-09-22",
+   "note": "Modell kostet NEU nur 98 EUR (mgmusik.com) - gebraucht ueber Neupreis trotz gutem Zustand"
+  },
+  {
+   "label": "Alhambra Konzertgitarre (Riss)",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/alhambra-konzertgitarre/3493933504-74-5826",
+   "asking_eur": 120,
+   "verdict": "CHECK",
+   "first_seen": "2026-09-22",
+   "note": "Verkaeuferin nennt selbst einen Sprung/Riss am Korpus unten - vor Ort ansehen, nicht blind kaufen"
+  },
+  {
+   "label": "Vintage REMUS Konzertgitarre",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/vintage-remus-konzertgitarre-aeltere-klassische-gitarre/3479063129-74-5850",
+   "asking_eur": 120,
+   "verdict": "REJECT",
+   "first_seen": "2026-09-22",
+   "note": "Baujahr/Modell unbekannt, Verkaeufer nennt selbst keine massive Decke - Bastelobjekt, nicht fuer einen Umstieg"
+  },
+  {
+   "label": "Ovation 1661 Balladeer 1984",
+   "url": "https://www.kleinanzeigen.de/s-anzeige/westerngitarre-ovation-292511-modellnummer-1661-balladeer-/3507762749-74-5850",
+   "asking_eur": 490,
+   "verdict": "CHECK",
+   "first_seen": "2026-09-22",
+   "note": "US-Fertigung 1984, Roundback (Lyrachord-Schale statt Holzboden) - Sammlerstueck mit besonderem Klang, aber der runde Korpus rutscht ungewohnt auf dem Bein; kein klassischer Einsteiger-Erstkauf"
   }
  ],
- "_checked": "2026-09-09"
+ "_checked": "2026-09-22"
 }
