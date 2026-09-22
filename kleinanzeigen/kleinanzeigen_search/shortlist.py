@@ -40,6 +40,23 @@ class Candidate:
     # The price seen on the last run. asking_eur stays the first-sighting
     # anchor, so a cut made a week ago does not keep reappearing as news.
     last_price_eur: int | None = None
+    # What this model costs new, checked against a retailer - never guessed.
+    # A range or a foreign currency belongs in new_price_note instead of
+    # here; new_price_eur only holds a figure fit to divide by.
+    new_price_eur: int | None = None
+    new_price_note: str = ""
+
+    @property
+    def current_eur(self) -> int | None:
+        """The most recently observed price, falling back to first-seen."""
+        return self.last_price_eur if self.last_price_eur is not None else self.asking_eur
+
+    @property
+    def percent_of_new(self) -> int | None:
+        """Current price as a percentage of new_price_eur, for ranking finds."""
+        if not self.current_eur or not self.new_price_eur:
+            return None
+        return round(100 * self.current_eur / self.new_price_eur)
 
 
 @dataclasses.dataclass
@@ -122,9 +139,11 @@ def render(checks: list[Check]) -> str:
     for row in checks:
         moved = row.moved
         move = f"  ({row.before} → {row.price_eur} €)" if moved else ""
+        pct = row.candidate.percent_of_new
+        pct_label = f"  [{pct}% v. Neupreis {row.candidate.new_price_eur} €]" if pct is not None else ""
         lines.append(
             f"{row.candidate.verdict:<7} {row.candidate.label:<26}"
-            f" {row.state:<11} {row.price_label:<12}{move}"
+            f" {row.state:<11} {row.price_label:<12}{move}{pct_label}"
         )
     gone = [r for r in checks if r.state == "GONE"]
     unknown = [r for r in checks if r.state.startswith("UNKNOWN")]

@@ -7,7 +7,9 @@
    "asking_eur": 500,
    "verdict": "BUY",
    "first_seen": "2026-08-25",
-   "last_price_eur": 500
+   "last_price_eur": 500,
+   "new_price_eur": 945,
+   "new_price_note": "Thomann.at inkl. Gigbag (frueher bei Thomann.de 949 EUR notiert)"
   },
   {
    "label": "Crafter STG D-18ce Pro",
@@ -15,7 +17,9 @@
    "asking_eur": 380,
    "verdict": "BUY",
    "first_seen": "2026-08-27",
-   "last_price_eur": 380
+   "last_price_eur": 380,
+   "new_price_eur": 698,
+   "new_price_note": "Modell STG D-18ce, ueber Haendlerlistung verifiziert"
   },
   {
    "label": "Seagull S6 + case",
@@ -23,7 +27,9 @@
    "asking_eur": 310,
    "verdict": "BUY",
    "first_seen": "2026-08-30",
-   "last_price_eur": 310
+   "last_price_eur": 310,
+   "new_price_eur": 685,
+   "new_price_note": "Seagull S6 Original, div. Fachhaendler (Reisser, MusicStore)"
   },
   {
    "label": "Cort Luce L450C",
@@ -56,7 +62,9 @@
    "verdict": "BUY",
    "first_seen": "2026-08-30",
    "note": "was 149 €, cut 139 € on 2026-09-07",
-   "last_price_eur": 130
+   "last_price_eur": 130,
+   "new_price_eur": 255,
+   "new_price_note": "Thomann, UVP 329 EUR"
   },
   {
    "label": "Admira Málaga",
@@ -64,7 +72,9 @@
    "asking_eur": 199,
    "verdict": "BUY",
    "first_seen": "2026-08-25",
-   "last_price_eur": 199
+   "last_price_eur": 199,
+   "new_price_eur": 272,
+   "new_price_note": "Modell Málaga, Fachhandel"
   },
   {
    "label": "Walden G630CE",
@@ -80,7 +90,8 @@
    "asking_eur": 400,
    "verdict": "BUY",
    "first_seen": "2026-08-27",
-   "last_price_eur": 350
+   "last_price_eur": 350,
+   "new_price_note": "~1.189 USD Listenpreis (Walden hat den EU-Markt verlassen, kein EUR-Neupreis verfuegbar)"
   },
   {
    "label": "Esteve 6PS",
@@ -121,7 +132,9 @@
    "asking_eur": 220,
    "verdict": "BUY",
    "first_seen": "2026-09-05",
-   "last_price_eur": 199
+   "last_price_eur": 199,
+   "new_price_eur": 479,
+   "new_price_note": "Nachfolgemodell Son-Satin 360-480 EUR je Haendler; baugleiches Sonata S bei promusic.at 479 EUR"
   },
   {
    "label": "Höfner Carmencita HC504",
@@ -153,7 +166,9 @@
    "asking_eur": 700,
    "verdict": "CHECK",
    "first_seen": "2026-08-31",
-   "last_price_eur": 700
+   "last_price_eur": 700,
+   "new_price_eur": 1099,
+   "new_price_note": "Modell 50 PC; verwandtes Modell 54-PC laut Haendlerangabe 1.288 EUR"
   },
   {
    "label": "Hopf Meisterw. 1979",
@@ -266,7 +281,9 @@
    "asking_eur": 280,
    "verdict": "REJECT",
    "first_seen": "2026-08-27",
-   "last_price_eur": 280
+   "last_price_eur": 280,
+   "new_price_eur": 225,
+   "new_price_note": "Thomann - gebraucht teurer als neu"
   },
   {
    "label": "Sigma DM-1ST",
@@ -274,7 +291,9 @@
    "asking_eur": 400,
    "verdict": "REJECT",
    "first_seen": "2026-08-27",
-   "last_price_eur": 380
+   "last_price_eur": 380,
+   "new_price_eur": 289,
+   "new_price_note": "session.de - gebraucht teurer als neu"
   },
   {
    "label": "Höfner HL3",
@@ -314,7 +333,9 @@
    "asking_eur": 170,
    "verdict": "BUY",
    "first_seen": "2026-09-06",
-   "last_price_eur": 170
+   "last_price_eur": 170,
+   "new_price_eur": 244,
+   "new_price_note": "244-259 EUR je Haendler (musikland-online: 244 EUR)"
   },
   {
    "label": "Fender CC-60SCE",
@@ -322,7 +343,9 @@
    "asking_eur": 149,
    "verdict": "BUY",
    "first_seen": "2026-09-06",
-   "last_price_eur": 129
+   "last_price_eur": 129,
+   "new_price_eur": 299,
+   "new_price_note": "Thomann, UVP 359,99 EUR"
   },
   {
    "label": "Gretsch G9511 Parlor",
@@ -330,7 +353,8 @@
    "asking_eur": 215,
    "verdict": "FAIR",
    "first_seen": "2026-09-06",
-   "last_price_eur": 215
+   "last_price_eur": 215,
+   "new_price_note": "299 USD Strassenpreis / 499 USD UVP (nur US-Markt, Modell inzwischen discontinued, kein EUR-Preis)"
   },
   {
    "label": "Maier vintage",
@@ -346,7 +370,9 @@
    "asking_eur": 180,
    "verdict": "REJECT",
    "first_seen": "2026-09-06",
-   "last_price_eur": 180
+   "last_price_eur": 180,
+   "new_price_eur": 329,
+   "new_price_note": "Way of Music, Stand 2024 - Modell inzwischen ausgelistet, Zahl mit Vorsicht lesen"
   },
   {
    "label": "Hohner (Neuburg)",
@@ -362,7 +388,9 @@
    "asking_eur": 199,
    "verdict": "BUY",
    "first_seen": "2026-09-06",
-   "last_price_eur": 199
+   "last_price_eur": 199,
+   "new_price_eur": 335,
+   "new_price_note": "Thomann, UVP 399 EUR"
   },
   {
    "label": "Taylor 114ce",
@@ -395,7 +423,9 @@
    "verdict": "BUY",
    "first_seen": "2026-09-08",
    "note": "model read off the soundhole label; solid Sitka spruce, OM body, 44.5 mm nut, 289 EUR new",
-   "last_price_eur": 170
+   "last_price_eur": 170,
+   "new_price_eur": 289,
+   "new_price_note": "diverse Fachhaendler (musikland-online, OTTO)"
   },
   {
    "label": "Hopf Grandioso 1-F",
@@ -412,7 +442,9 @@
    "asking_eur": 100,
    "verdict": "REJECT",
    "first_seen": "2026-09-22",
-   "note": "Modell kostet NEU nur 98 EUR (mgmusik.com) - gebraucht ueber Neupreis trotz gutem Zustand"
+   "note": "Modell kostet NEU nur 98 EUR (mgmusik.com) - gebraucht ueber Neupreis trotz gutem Zustand",
+   "new_price_eur": 98,
+   "new_price_note": "mgmusik.com - Neupreis, daher gebrauchtes Angebot ueberteuert"
   },
   {
    "label": "Alhambra Konzertgitarre (Riss)",

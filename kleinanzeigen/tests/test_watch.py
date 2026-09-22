@@ -223,6 +223,20 @@ class ShortlistTest(unittest.TestCase):
         row = self.check(page)
         self.assertEqual(row.moved, -80)
 
+    def test_percent_of_new_needs_both_prices(self):
+        from kleinanzeigen_search import shortlist
+        priced = shortlist.Candidate(label="a", url="u", asking_eur=199, new_price_eur=335)
+        self.assertEqual(priced.percent_of_new, 59)
+        self.assertIsNone(shortlist.Candidate(label="b", url="u", asking_eur=199).percent_of_new)
+        self.assertIsNone(shortlist.Candidate(label="c", url="u", new_price_eur=335).percent_of_new)
+
+    def test_percent_of_new_follows_the_latest_price_cut(self):
+        """A cut since first-seen must move the ratio, not the stale asking price."""
+        from kleinanzeigen_search import shortlist
+        candidate = shortlist.Candidate(
+            label="a", url="u", asking_eur=149, last_price_eur=129, new_price_eur=299)
+        self.assertEqual(candidate.percent_of_new, 43)
+
 
 class HeadlineCountTest(unittest.TestCase):
     def test_one_ad_in_two_overlapping_areas_counts_once(self):
